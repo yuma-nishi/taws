@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 This document defines the Go-side APIs and user-visible behavior for Web/CLI.
-The Go layer acts as the REE-side frontend: it accepts Web/CLI requests and calls C APIs in `attester/App`.
+The Go layer acts as the REE-side frontend: it accepts Web/CLI requests and calls C APIs in `App`.
 It also converts C API results into HTTP responses and user-facing messages.
 
 ## 2. Scope

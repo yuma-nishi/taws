@@ -1,17 +1,17 @@
-# attester/App Design (REE Side)
+# App Design (REE Side)
 
 ## 1. Purpose
-This document explains the main behavior of `attester/App` on the REE side and defines how TEEP session results (`teep_session_result_t`) are used.
-`attester/App` is the REE-side C API layer. It receives requests from upper layers (such as Go), calls TEE-side processing (TEEP and WASM execution), and returns results in a form upper layers can handle.
+This document explains the main behavior of `App` on the REE side and defines how TEEP session results (`teep_session_result_t`) are used.
+`App` is the REE-side C API layer. It receives requests from upper layers (such as Go), calls TEE-side processing (TEEP and WASM execution), and returns results in a form upper layers can handle.
 
 ## 2. Scope
-This document covers implementations related to TEEP processing and WASM execution in `attester/App`.
+This document covers implementations related to TEEP processing and WASM execution in `App`.
 
 | File | Main Responsibility |
 | --- | --- |
-| `attester/App/src/attester_api.cpp` | Calls `run_teep_session()` from `attester_install()` and returns results |
-| `attester/App/src/sgx_teep_session.cpp` | Aggregates HTTP/ECALL results in `run_teep_session()` and decides `teep_session_result_t` |
-| `attester/App/src/teep_http_client.cpp` | Sends/receives TEEP over HTTP via `teep_send_http_post()` |
+| `App/src/attester_api.cpp` | Calls `run_teep_session()` from `attester_install()` and returns results |
+| `App/src/sgx_teep_session.cpp` | Aggregates HTTP/ECALL results in `run_teep_session()` and decides `teep_session_result_t` |
+| `App/src/teep_http_client.cpp` | Sends/receives TEEP over HTTP via `teep_send_http_post()` |
 
 ## 3. Session Result Codes
 `teep_session_result_t` represents how one TEEP session ended.
@@ -27,7 +27,7 @@ Go uses this value to decide success/failure handling.
 
 ## 4. C APIs for Go Integration
 The APIs below are provided to Go.
-Declarations are in `attester/App/inc/attester_api.h`, and implementations are in `attester/App/src/attester_api.cpp`.
+Declarations are in `App/inc/attester_api.h`, and implementations are in `App/src/attester_api.cpp`.
 
 | API | Return Type | Description |
 | --- | --- | --- |

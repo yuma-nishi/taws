@@ -71,7 +71,7 @@ flowchart LR
 | Web Browser -> REE | POST | `/detect` | Upload image and run inference |
 | REE -> TAM | POST | `/tam` | Send/receive TEEP messages |
 
-For CLI usage and options, see `attester/README.md`.
+For CLI usage and options, see `README.md`.
 
 ### 5.3 Web UI API
 #### 5.3.1 `POST /teep`
