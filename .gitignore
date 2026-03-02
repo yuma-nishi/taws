@@ -1,0 +1,10 @@
+build/
+lib/
+App/src/*.o
+Enclave/src/*.o
+App/Enclave_u.*
+Enclave/Enclave_t.*
+enclave.signed.so
+enclave.so
+.config_SIM_DEBUG_x64
+

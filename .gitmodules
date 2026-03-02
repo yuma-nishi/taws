@@ -1,0 +1,19 @@
+[submodule "third_party/QCBOR"]
+	path = third_party/QCBOR
+	url = https://github.com/laurencelundblade/QCBOR
+[submodule "third_party/t_cose"]
+	path = third_party/t_cose
+	url = https://github.com/kentakayama/t_cose
+	branch = dev-deterministic-ecdsa
+[submodule "third_party/libcsuit"]
+	path = third_party/libcsuit
+	url = https://github.com/kentakayama/libcsuit
+[submodule "third_party/libteep"]
+	path = third_party/libteep
+	url = https://github.com/kentakayama/libteep
+[submodule "third_party/intel-sgx-ssl"]
+	path = third_party/intel-sgx-ssl
+	url = https://github.com/intel/intel-sgx-ssl.git
+[submodule "third_party/wasm-micro-runtime"]
+	path = third_party/wasm-micro-runtime
+	url = https://github.com/bytecodealliance/wasm-micro-runtime.git

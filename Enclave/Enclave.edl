@@ -1,0 +1,88 @@
+/*
+ * Copyright (C) 2011-2021 Intel Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in
+ *     the documentation and/or other materials provided with the
+ *     distribution.
+ *   * Neither the name of Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+/* Enclave.edl - Top EDL file. */
+
+
+
+enclave {
+    include "stdint.h"
+    include "ecall_wasm_result.h"
+    include "ecall_process_teep_result.h"
+
+
+    from "sgx_tstdc.edl" import *;
+    from "sgx_tsgxssl.edl" import *; 
+    from "sgx_pthread.edl" import *;
+
+    from "sgx_pthread.edl" import *;
+    from "sgx_wamr.edl" import *;
+
+    
+    trusted {
+    /* Enclave_generate_keypair.cpp */
+        public int ecall_teep_generate_es256_key_pair();
+        public int ecall_teep_set_es256_key();
+        public void ecall_teep_free_keypair();
+
+
+    /* Enclave_process_message.cpp */
+        public ecall_process_teep_result_t ecall_process_message([in, size=recv_len] uint8_t* recv_buf, size_t recv_len,
+                                         [in, string] const char* app_name,
+                                         [out, size=allocated_len] uint8_t* send_buf, size_t allocated_len,
+                                         [out] size_t* actual_len);
+
+
+        /*
+        * ecall_invoke_wasm - invokes a wasm function in enclave via WAMR.
+        *  [in]: wapp_name/func_name identify the target wasm module and function.
+        *  [in]: input/input_len provide raw input bytes passed to the wasm function.
+        *  [out]: output/output_len receive returned bytes from the wasm function.
+        *  [out]: actual_len stores the actual number of bytes written to output.
+        */
+        public ecall_wasm_result_t ecall_invoke_wasm([in, string] const char* wapp_name,
+                                         [in, string] const char* func_name,
+                                         [in, size=input_len] uint8_t* input, size_t input_len,
+                                         [out, size=output_len] uint8_t* output, size_t output_len,
+                                         [out] size_t* actual_len);
+
+    };
+
+    /* 
+     * ocall_print_string - invokes OCALL to display string buffer inside the enclave.
+     *  [in]: copy the string buffer to App outside.
+     *  [string]: specifies 'str' is a NULL terminated buffer.
+     */
+    untrusted {
+        void ocall_print_string([in, string] const char *str);
+    };
+
+};

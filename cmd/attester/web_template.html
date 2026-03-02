@@ -1,0 +1,320 @@
+<!--
+ * Copyright (c) 2026 SECOM CO., LTD. All Rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Attester Detector</title>
+  <style>
+    :root {
+      --blue: #01519b;
+      --teal: #00aaad;
+      --black: #000000;
+      --white: #FFFFFF;
+      --gray: #E6E7E8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--black);
+      background: var(--white);
+      min-height: 100vh;
+    }
+    .app {
+      width: min(1100px, 92vw);
+      margin: 40px auto 64px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--gray);
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      margin: 0 0 6px;
+      letter-spacing: 0.2px;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--black);
+      opacity: 0.7;
+      font-size: 16px;
+    }
+    .badge {
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--gray);
+      color: var(--blue);
+      font-weight: 600;
+      border: 1px solid var(--blue);
+      white-space: nowrap;
+    }
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 26px;
+    }
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--gray);
+      border-radius: 18px;
+      height: 320px;
+      display: grid;
+      place-items: center;
+      color: var(--black);
+      font-size: 18px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 200ms ease, border-color 200ms ease;
+    }
+    .panel:hover {
+      transform: translateY(-3px);
+      border-color: var(--blue);
+    }
+    .panel img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: var(--white);
+    }
+    .drop {
+      border: 2px dashed var(--blue);
+      background: var(--white);
+    }
+    .drop.dragover {
+      border-color: var(--teal);
+      background: var(--gray);
+    }
+    .panel-label {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--black);
+    }
+    .panel-label span {
+      font-size: 14px;
+      color: var(--blue);
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin: 32px 0 14px;
+    }
+    .btn {
+      background: var(--blue);
+      color: var(--white);
+      border: 1px solid var(--blue);
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      padding: 12px 24px;
+      cursor: pointer;
+      min-width: 220px;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .btn.secondary {
+      background: var(--white);
+      color: var(--teal);
+      border: 1px solid var(--teal);
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      background: var(--black);
+      border-color: var(--black);
+      color: var(--white);
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+      transform: none;
+    }
+    .hidden {
+      display: none;
+    }
+    .status {
+      min-height: 22px;
+      font-size: 16px;
+      color: var(--black);
+    }
+    .status.error {
+      color: var(--black);
+    }
+    .fade-up {
+      animation: fadeUp 480ms ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 760px) {
+      .hero {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .panels {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero fade-up">
+      <div>
+        <h1>Attester Detector</h1>
+        <p>Drop an image to run YOLOv8 inside the SGX-backed WASM runtime.</p>
+      </div>
+      <div class="badge">SGX · WASM · TEEP</div>
+    </header>
+    <section class="panels fade-up">
+      <div class="panel drop" id="dropZone">
+        <div id="dropText" class="panel-label">
+          <strong>Drop image here</strong>
+          <span>input.jpg</span>
+        </div>
+        <img id="inputPreview" class="hidden" alt="Input preview" />
+      </div>
+      <div class="panel">
+        <div class="panel-label">
+          <strong>Detector output</strong>
+          <span>detected.jpg</span>
+        </div>
+        <img id="outputPreview" class="hidden" alt="Output preview" />
+      </div>
+    </section>
+    <div class="cta fade-up">
+      <button class="btn" id="runBtn" disabled>Run detector</button>
+      <button class="btn secondary" id="installBtn">Install (TEEP)</button>
+    </div>
+    <div class="status" id="status">Drop an image to start.</div>
+  </main>
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const dropText = document.getElementById('dropText');
+    const inputPreview = document.getElementById('inputPreview');
+    const outputPreview = document.getElementById('outputPreview');
+    const runBtn = document.getElementById('runBtn');
+    const installBtn = document.getElementById('installBtn');
+    const status = document.getElementById('status');
+
+    let selectedFile = null;
+
+    function setStatus(message, isError) {
+      status.textContent = message;
+      status.classList.toggle('error', Boolean(isError));
+    }
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        setStatus('Please provide an image file.', true);
+        return;
+      }
+      selectedFile = file;
+      const url = URL.createObjectURL(file);
+      inputPreview.src = url;
+      inputPreview.classList.remove('hidden');
+      dropText.classList.add('hidden');
+      runBtn.disabled = false;
+      setStatus('Ready to run detection.', false);
+    }
+
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('dragover');
+      const [file] = event.dataTransfer.files;
+      handleFile(file);
+    });
+
+    dropZone.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = () => handleFile(input.files[0]);
+      input.click();
+    });
+
+    runBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      setStatus('Running detector...', false);
+      runBtn.disabled = true;
+      try {
+        const formData = new FormData();
+        formData.append('image', selectedFile);
+        const response = await fetch('/detect', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+        const blob = await response.blob();
+        outputPreview.src = URL.createObjectURL(blob);
+        outputPreview.classList.remove('hidden');
+        setStatus('Detection complete.', false);
+      } catch (err) {
+        console.error(err);
+        setStatus('Detection failed. Check server logs.', true);
+      } finally {
+        runBtn.disabled = false;
+      }
+    });
+
+    installBtn.addEventListener('click', async () => {
+      setStatus('Running TEEP install...', false);
+      installBtn.disabled = true;
+      try {
+        const response = await fetch('/teep', { method: 'POST' });
+        if (!response.ok) {
+          throw new Error(`Install failed: ${response.status}`);
+        }
+        const message = (await response.text()).trim();
+        setStatus(message || 'TEEP install finished.', false);
+      } catch (err) {
+        console.error(err);
+        setStatus('TEEP install failed. Check server logs.', true);
+      } finally {
+        installBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
