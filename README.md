@@ -68,8 +68,6 @@ host$ cd .. && make SGX_MODE=SIM
 # run the attester Web UI on the host
 host$ ./build/go/attester-go web 
 
-# sanity check (print help and exit)
-host$ ./build/go/attester-go
 ```
 
 
