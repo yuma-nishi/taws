@@ -8,7 +8,7 @@
 #ifndef CREATE_EVIDENCE_H
 #define CREATE_EVIDENCE_H
 
-#include <stdint.h>                 
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
