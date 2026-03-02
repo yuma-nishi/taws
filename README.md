@@ -1,12 +1,11 @@
 # TAWS: A TEEP Agent for Wasm on Intel SGX
 
 This repository contains the TEEP Agent implementation used in the TEEP demo.
+In this demo, TEE Device downloads a YOLOv8 WebAssembly module and runs image processing inside the SGX enclave.
 The TAM and Verifier components are maintained in separate repositories.
 This repository focuses on building and running the TEEP Agent in Intel SGX simulation mode.
 By combining this SGX TEEP Agent with the corresponding TAM, you can simulate the full TEEP provisioning flow.
 
-
-## Architecture
 
 ![architectureFig](doc/images/architecture-fig.png)
 
@@ -19,9 +18,8 @@ By combining this SGX TEEP Agent with the corresponding TAM, you can simulate th
 ├── 📁 cmd (CLI + Web-UI entrypoints)
 │   └── 📁 attester
 ├── 📁 doc (documentation assets)
-├── 📁 inc (headers and prebuilt libs)
+├── 📁 common (Shared definitions and interfaces used by both App and Enclave)
 ├── 📁 scripts (build helper scripts)
-├── 📁 tam_mock_server (local TAM mock server)
 ├── 📁 third_party (TEEP dependencies tracked as git submodules)
 │   ├── 📁 libcsuit
 │   ├── 📁 libteep
