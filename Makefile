@@ -81,7 +81,7 @@ BUILD_APP ?= 0
 APP_TARGET := $(if $(filter 1,$(BUILD_APP)),$(App_Name),)
 
 GO_BUILD_DIR := $(ROOT_DIR)/build/go
-GO_BIN := attester-go
+GO_BIN := taws
 GO_LIB := $(GO_BUILD_DIR)/libattester.a
 GO_APP_CPP_OBJS := $(GO_BUILD_DIR)/sgx_teep_session.o $(GO_BUILD_DIR)/teep_http_client.o $(GO_BUILD_DIR)/attester_api.o
 GO_APP_C_OBJS := $(GO_BUILD_DIR)/Enclave_u.o
@@ -249,7 +249,7 @@ go-front: $(GO_LIB)
 	@CGO_ENABLED=1 \
 	CGO_CFLAGS="$(App_Include_Paths)" \
 	CGO_LDFLAGS="-L$(GO_BUILD_DIR) -lattester $(App_Link_Flags) -lstdc++" \
-	go build -o $(GO_BUILD_DIR)/$(GO_BIN) ./cmd/attester
+	go build -o $(GO_BUILD_DIR)/$(GO_BIN) ./yolov8-frontend
 	@echo "GO   =>  $(GO_BUILD_DIR)/$(GO_BIN)"
 
 run-go: go-front

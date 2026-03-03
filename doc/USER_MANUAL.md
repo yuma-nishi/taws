@@ -1,0 +1,95 @@
+# TAWS User Manual
+
+## Purpose
+This document explains how to run and use the TAWS frontend (`./build/go/taws`) in SGX simulation mode.
+It covers Web Server usage, CLI usage, available options, and test commands.
+
+## Scope
+- Target binary: `./build/go/taws`
+- Target modes: `web`, `cli`
+- Related setup/build steps: [README Getting started](../README.md#getting-started)
+
+## Running Modes
+Usage:
+
+```bash
+./build/go/taws <subcommand> [options]
+```
+
+Subcommands:
+- `web`: start Web Server
+- `cli`: start interactive CLI
+
+## Web Server
+Start the Web Server:
+
+```bash
+./build/go/taws web
+```
+
+Usage:
+
+```bash
+./build/go/taws web [--addr ADDR] [--wapp NAME] [--func NAME] [--keygen yes|no] [--max-output BYTES] [--url URL]
+```
+
+Default URL:
+- `http://127.0.0.1:8081`
+
+Web page:
+
+![Web-UI](images/image-pre.png)
+
+## CLI Usage
+Start CLI:
+
+```bash
+./build/go/taws cli [--keygen yes|no]
+```
+
+CLI commands:
+
+```bash
+install [--url URL] [--wapp NAME]
+detector [--wapp NAME] [--func NAME] [--max-output BYTES] <input.jpg> [output.jpg]
+help
+exit
+```
+
+## Options
+### Common Option
+
+| Option | Applies to | Description |
+|---------|------------|-------------|
+| `--keygen yes/no` | `cli`, `web` | Configure how the TEEP Agent key pair is prepared at startup: generate a new key pair (`yes`) or reuse an existing key (`no`). |
+
+### CLI Command Options
+
+| Option | Applies to | Description |
+|---------|------------|-------------|
+| `install --url URL` | `install` | Override the TAM URL. Default: `http://localhost:8080/tam`. |
+| `install --wapp NAME` | `install` | WASM app name for install session. Default: `yolov8.wasm`. |
+| `detector --wapp NAME` | `detector` | Target WAPP name for detector command. Default: `yolov8.wasm`. |
+| `detector --func NAME` | `detector` | Function name to invoke. Default: `detector_yolov8_wasm`. |
+| `detector --max-output BYTES` | `detector` | Maximum output bytes. Default: `16777216`. |
+
+### Web Server Options
+
+| Option | Description |
+|---------|-------------|
+| `web --addr ADDR` | Web server bind address. Default: `127.0.0.1:8081`. |
+| `web --url URL` | TAM URL used by `POST /teep`. Default: `http://localhost:8080/tam`. |
+| `web --wapp NAME` | WASM app name used by Web install/detect flow. Default: `yolov8.wasm`. |
+| `web --func NAME` | WASM function used by Web detect flow. Default: `detector_yolov8_wasm`. |
+| `web --max-output BYTES` | Maximum detector output bytes in Web mode. Default: `16777216`. |
+
+## Tests
+Run unit tests:
+
+```bash
+make -f Makefile.test
+```
+
+Expected result:
+- All test binaries complete successfully.
+- `make` exits with status `0`.

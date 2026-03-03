@@ -198,13 +198,13 @@ Errors caused by `UPDATE`:
 | `token` | `teep_buf_t` | Token from Update request |
 | `suit_reports` | `teep_buf_array_t` | Set when SUIT report is available |
 
-### 7.5 ECALL Return Value and Response Availability
-| ECALL return value | Meaning | Response availability |
-| --- | --- | --- |
-| `ECALL_PROCESS_TEEP_RESULT_OK` (`0`) | Response was generated and returned normally. | Response message is available. |
-| `ECALL_PROCESS_TEEP_RESULT_RESPONSE_IS_TEEP_ERROR` (`1`) | Response was generated and its TEEP message type is `ERROR_MESSAGE`. | Response message is available. |
-| `ECALL_PROCESS_TEEP_RESULT_FATAL` (`2`) | Fatal processing failure (for example verify/decode/encode/sign failure). | Response message is not available. |
-| `ECALL_PROCESS_TEEP_RESULT_DEVICE_ACTIVATION_FLOW` (`3`) | Response was generated and contains `QUERY_RESPONSE` with Evidence (`attestation_payload`). | Response message is available. |
+### 7.5 ECALL Return Value
+| ECALL return value | Meaning |
+| --- | --- |
+| `ECALL_PROCESS_TEEP_RESULT_OK` (`0`) | Response was generated and returned normally. |
+| `ECALL_PROCESS_TEEP_RESULT_RESPONSE_IS_TEEP_ERROR` (`1`) | Response was generated and its TEEP message type is `ERROR_MESSAGE`. |
+| `ECALL_PROCESS_TEEP_RESULT_FATAL` (`2`) | Fatal processing failure (for example verify/decode/encode/sign failure). |
+| `ECALL_PROCESS_TEEP_RESULT_DEVICE_ACTIVATION_FLOW` (`3`) | Response was generated and contains `QUERY_RESPONSE` with Evidence (`attestation_payload`). |
 
 ## 8. Dependent Modules
 | Module | Role | Detailed design |

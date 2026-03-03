@@ -19,7 +19,7 @@ extern "C" {
 #include "teep_create_evidence.h"
 #include "Enclave.h"
 #include "debug_print.h"
-#include "trust_anchor_es256_key.h"
+#include "attester_es256_key.h"
 
 
 enum{
@@ -63,7 +63,7 @@ teep_err_t create_evidence_generic(const teep_query_request_t *query_request,
     /* Initialize for signing */
     teep_err_t          result;
     teep_mechanism_t mechanism_sign;
-    result = teep_key_init_es256_key_pair(trust_anchor_es256_private_key, trust_anchor_es256_public_key, NULLUsefulBufC, &mechanism_sign.key);
+    result = teep_key_init_es256_key_pair(attester_es256_private_key, attester_es256_public_key, NULLUsefulBufC, &mechanism_sign.key);
     if (result != TEEP_SUCCESS) {
         PRINT_DEBUG_LOG("main : Failed to create t_cose key pair. %s(%d)\n", teep_err_to_str(result), result);
         return result;

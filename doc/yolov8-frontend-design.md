@@ -1,4 +1,4 @@
-# cmd/attester Go Design
+# cmd/taws Go Design
 
 ## 1. Purpose
 This document defines the Go-side APIs and user-visible behavior for Web/CLI.
@@ -32,7 +32,7 @@ For failures, the Web UI shows a fixed message: `install failed`.
 Detailed failure causes are checked in Attester logs (stdout/stderr): same terminal in CLI mode, server console in Web mode.
 
 ## 4. Go Bridge API
-These Go bridge APIs are defined in `cmd/attester/attester_c_bridge.go`.
+These Go bridge APIs are defined in `cmd/taws/attester_c_bridge.go`.
 They call C APIs declared in `App/inc/attester_api.h` and implemented in `App/src/attester_api.cpp`.
 
 | Function | Return Value | Purpose |

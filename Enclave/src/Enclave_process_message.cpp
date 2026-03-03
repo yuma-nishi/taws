@@ -37,7 +37,7 @@ extern "C" {
 #include "debug_print.h"
 #include "tc_manager.h"
 #include "teep_create_evidence.h"
-#include "trust_anchor_prime256v1_cose_key_public.h"
+#include "suit_manifest_prime256v1_cose_key_public.h"
 #include "suit_manifest_process.h"
 #include "suit_report_esp256_cose_key_private.h"
 #include "suit_config.h"
@@ -400,7 +400,7 @@ teep_err_t process_update(const teep_update_t *update,
 
     #define NUM_PUBLIC_KEYS_FOR_ECDSA       1
     UsefulBufC public_keys_for_ecdsa[NUM_PUBLIC_KEYS_FOR_ECDSA] = {
-        trust_anchor_esp256_cose_key_public,
+        suit_manifest_esp256_cose_key_public,
     };
 
     suit_report_context_t *reporting_engine = NULL;

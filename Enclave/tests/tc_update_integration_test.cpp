@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "tc_manager.h"
-#include "trust_anchor_prime256v1_cose_key_public.h"
+#include "suit_manifest_prime256v1_cose_key_public.h"
 #include "tam_es256_public_key.h"
 
 #ifdef __cplusplus
@@ -118,7 +118,7 @@ static void test_helper_process_update_message(const uint8_t *update_message_buf
     }
 
     suit_key_t recipient_key = {};
-    result = suit_set_suit_key_from_cose_key(trust_anchor_esp256_cose_key_public, &recipient_key);
+    result = suit_set_suit_key_from_cose_key(suit_manifest_esp256_cose_key_public, &recipient_key);
     assert(result == SUIT_SUCCESS);
     result = suit_processor_add_recipient_key(processor_context,
                                               (int)CBOR_TAG_COSE_SIGN1,
