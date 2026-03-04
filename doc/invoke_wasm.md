@@ -39,17 +39,17 @@ sequenceDiagram
     INV->>WAMR: ensure runtime/module ready
     INV->>WAMR: call wasm function (phase 1: required output size)
     INV->>WAMR: call wasm function (phase 2: output bytes)
-    INV-->>Caller: ecall_wasm_result_t + actual_len
+    INV-->>Caller: output bytes + output size
 ```
 
 ## 4. Failure Behavior Summary
 - Invalid arguments: returns `ECALL_WASM_RESULT_INVALID_ARGUMENT`.
-- Missing target record or empty `wapp` binary: returns `ECALL_WASM_RESULT_TRUSTED_COMPONENT_NOT_FOUND`.
+- Missing target record or empty wapp binary: returns `ECALL_WASM_RESULT_TRUSTED_COMPONENT_NOT_FOUND`.
 - Runtime/module/buffer allocation failures: returns resource/internal/incompatible errors depending on failure stage.
 - Invocation failures: returns `ECALL_WASM_RESULT_WASM_EXECUTION_FAILED`.
 - Output capacity insufficient: returns `ECALL_WASM_RESULT_OUTPUT_BUFFER_TOO_SMALL`.
 
-Exact failure-to-error mapping is implementation-defined; refer to source code.
+For exact failure-to-error mapping, refer to `Enclave/src/Enclave_wasm.cpp` and `common/ecall_wasm_result.h`.
 
 ## 5. Test Coverage Summary
 ### 5.1 Unit Tests
@@ -62,12 +62,6 @@ Covered behavior:
 - WASM execution failure handling
 - Output buffer too small handling
 - Success path output copy and return values
-
-### 5.2 Not Covered Yet (Known Gaps)
-- Reuse path for same `wapp_hash`
-- Reload path for different `wapp_hash`
-- Failure branch for copied `wapp_bin` allocation
-- Branch where second call ends with `actual_len == 0`
 
 ## 6. Future Work
 - Design an input ABI (for example CBOR) for invoking WASM functions with multiple arguments.

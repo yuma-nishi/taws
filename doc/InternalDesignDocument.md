@@ -19,6 +19,8 @@ This document focuses on high-level flow and module responsibilities.
   - Manages Trusted Components (TC) through TC-Manager
   - Executes WASM through WAMR
 
+Supplement: For boundary-specific DFD views (REE / TEE / REE-TEE boundary) used to visualize data exchanges across files/modules, see [internal-design-dfd-dataflow.md](./internal-design-dfd-dataflow.md).
+
 
 ```mermaid
 flowchart LR

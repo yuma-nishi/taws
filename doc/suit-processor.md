@@ -52,7 +52,8 @@ Detailed argument and return-value behavior is documented in `Enclave/inc/suit_m
 - Store callback failure: treated as fatal SUIT-side processing failure.
 - Condition mismatch (size/digest): returns condition mismatch error and reason for report generation.
 - Report callback failure (or allocation failure): report handling failure is returned.
-- Exact error-code mapping (for example `SUIT_ERR_*`) is implementation-defined; refer to source code.
+
+Note: Exact `SUIT_ERR_*` mapping is defined in source code.
 
 ## 6. Related Modules and Tests
 ### 6.1 Related Modules
