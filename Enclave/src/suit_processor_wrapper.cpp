@@ -5,9 +5,9 @@
  */
 
 /*!
-    \file   suit_manifest_process_main.c
+    \file   suit_processor_wrapper.cpp
 
-    \brief  A sample to use libcsuit processing
+    \brief  Wrapper callbacks that bridge libcsuit processing and Attester modules
  */
 
 //#include <getopt.h>

@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Scope
 This document provides an internal overview of the TEE Device design.
-Detailed specifications for each module are documented in separate internal design documents.
+Detailed specifications are documented only for modules where dedicated references are needed.
 This document focuses on high-level flow and module responsibilities.
 
 ## 2. Architecture Overview
@@ -38,18 +38,18 @@ direction LR
   %% ---- REE ----
   subgraph REE["REE (Host)"]
   direction TB
-    Cmd["yolov8-frontend"]
-    App["App"]
+    Cmd(["yolov8-frontend"])
+    App(["App"])
   end
 
   %% ---- TEE ----
   subgraph TEE["TEE (SGX Enclave)"]
   direction TB
-    Agent["TEEP Agent<br/>(Message Processing)"]
-    Suit["SUIT Processor"]
-    Tc["TC Manager"]
+    Agent(["TEEP Agent<br/>(Message Processing)"])
+    Suit(["SUIT Processor"])
+    Tc(["TC Manager"])
     Tc-record[(TC Record)]
-    Wamr["Wasm Runtime"]
+    Wamr(["Wasm Runtime"])
   end
 end
 
@@ -59,9 +59,10 @@ Browser -->|"HTTP REQ:image"| Cmd
 
 
 %% =============== TEEP message flow ===============
-App <-->|"TEEP messages"| TAMNode
-App -->|"ECALL-process-teep: TEEP message"| Agent
-Agent -->|"response"| App
+TAMNode --> |"QueryRequest, UpdateMessage"|App
+App -->|"QueryResponse, SuccessMessage"| TAMNode
+App -->|"ECALL: QueryRequest, UpdateMessage"| Agent
+Agent -->|"QueryResponse, SuccessMessage"| App
 
 %% =============== SUIT processing flow ===============
 Agent -->|"manifest"| Suit
@@ -70,7 +71,7 @@ Tc -->|"Save: app_name,wasm_binary"| Tc-record
 
 %% =============== Wasm execution (conceptual) ===============
 Cmd -->|"app_name, func_name, image"| App
-App -->|"ECALL-execute-app: app_name, func_name"| Wamr
+App -->|"ECALL: app_name, func_name, image"| Wamr
 Tc-record -->|"wasm_binary"| Tc
 Wamr -->|"app_name"| Tc
 Tc -->|"wasm_binary"| Wamr
@@ -110,8 +111,6 @@ Browser -->|"result (image)"| User
 ## 4. Module Design Documents
 | Module | Role | Design Document |
 | --- | --- | --- |
-| `App` | Aggregates TEEP session results and returns public APIs | [attester-app-design.md](./attester-app-design.md) |
-| `yolov8-frontend` | Go bridge APIs and Web/CLI display control | [yolov8-frontend-design.md](./yolov8-frontend-design.md) |
 | `Enclave_process_message` | Processes TEEP messages | [enclave-process-message.md](./enclave-process-message.md) |
 | `tc_manager` | Manages TC records | [tc-manager.md](./tc-manager.md) |
 | `suit_manifest_process` | Processes SUIT manifests | [suit-processor.md](./suit-processor.md) |

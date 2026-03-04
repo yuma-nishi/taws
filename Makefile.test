@@ -42,7 +42,7 @@ $(MANIFEST_RECORD_TEST_BIN): $(MANIFEST_RECORD_TEST_SRCS)
 
 SUIT_CONDITION_CALLBACK_TEST_SRCS := Enclave/tests/suit_condition_callback_test.cpp \
 	Enclave/tests/test_helpers.cpp \
-	Enclave/src/suit_manifest_process.cpp \
+	Enclave/src/suit_processor_wrapper.cpp \
 	Enclave/src/tc_manager.cpp
 
 suit-condition-callback-test: $(SUIT_CONDITION_CALLBACK_TEST_BIN)
@@ -81,7 +81,7 @@ $(ENCLAVE_WASM_INVOKE_TEST_BIN): $(ENCLAVE_WASM_INVOKE_TEST_SRCS)
 
 
 TC_UPDATE_INTEGRATION_TEST_SRCS := Enclave/tests/tc_update_integration_test.cpp \
-	Enclave/src/suit_manifest_process.cpp \
+	Enclave/src/suit_processor_wrapper.cpp \
 	Enclave/src/tc_manager.cpp
 
 tc-update-integration-test: $(TC_UPDATE_INTEGRATION_TEST_BIN)
@@ -111,7 +111,7 @@ $(TC_MANAGER_GET_TC_LIST_TEST_BIN): $(TC_MANAGER_GET_TC_LIST_TEST_SRCS)
 PROCESS_QUERY_REQUEST_TEST_SRCS := Enclave/tests/proces_query_request_test.cpp \
 	Enclave/tests/test_helpers.cpp \
 	Enclave/src/Enclave_process_message.cpp \
-	Enclave/src/suit_manifest_process.cpp \
+	Enclave/src/suit_processor_wrapper.cpp \
 	Enclave/src/tc_manager.cpp
 
 process-query-request-test: $(PROCESS_QUERY_REQUEST_TEST_BIN)

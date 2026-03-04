@@ -1,6 +1,6 @@
 # TAWS: A TEEP Agent for Wasm on Intel SGX
 
-This repository contains an implementation of a TEEP Agent.
+TAWS (pronounced "tohz") contains an implementation of a TEEP Agent.
 The original design goal of the TEEP Agent is to support installation and update of any WebAssembly (Wasm) applications inside a TEE.
 However, in the current implementation, the TEE Device is specialized for executing a YOLOv8 WebAssembly module for image processing.
 Therefore, any Wasm applications are not supported at this stage.

@@ -116,7 +116,7 @@ Crypto_Library_Name := sgx_tcrypto
 Enclave_Cpp_Files := Enclave/src/Enclave.cpp Enclave/src/Enclave_wasm.cpp \
 					 Enclave/src/Enclave_generate_keypair.cpp Enclave/src/Enclave_process_message.cpp \
 					 Enclave/src/Enclave_generate_evidence.cpp\
-					 Enclave/src/suit_manifest_process.cpp \
+					 Enclave/src/suit_processor_wrapper.cpp \
 					 Enclave/src/tc_manager.cpp
 Enclave_Include_Paths := -IEnclave -IEnclave/inc -Icommon -I$(SGX_SDK)/include -I$(SGX_SDK)/include/libcxx -I$(SGX_SDK)/include/tlibc $(SYS_INC) \
 						$(WAMR_SYS_INC)
