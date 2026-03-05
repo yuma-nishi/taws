@@ -43,6 +43,7 @@ sequenceDiagram
 ```
 
 ## 4. TEEP Agent State Transition
+This section clarifies TEEP Agent state transitions and the message type the TEEP Agent is expected to accept next.
 - Initial state: `WAITING_QUERY_REQUEST`
 - After building `QUERY_RESPONSE` (before encode/sign): `WAITING_UPDATE_OR_QUERY_REQUEST`
 - After building `SUCCESS_MESSAGE` (before encode/sign): `WAITING_QUERY_REQUEST`

@@ -59,5 +59,3 @@ Covered behavior:
 - Output buffer too small handling
 - Success path output copy and return values
 
-## 6. Future Work
-- Design an input ABI (for example CBOR) for invoking WASM functions with multiple arguments.
