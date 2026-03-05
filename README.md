@@ -45,13 +45,10 @@ The TEE Device uses the following libraries.
 
 ## Getting started
 
-### Prerequisites
-
-You need an environment where Intel SGX simulation mode is available.
-See [linux-sgx](https://github.com/intel/confidential-computing.sgx) for details.
-
 ### Build and Run the TEEP Agent
 
+- You need an environment where Intel SGX simulation mode is available.
+  See [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx) for details.
 - The host build has been tested on **Ubuntu 22.04 LTS**. Other Linux distributions may work but have not been verified.
 - For a host-only workflow, install dependencies locally, build the project, launch the TAM server, and then run the teep agent from the host environment.
 
@@ -64,6 +61,19 @@ cd .. && make SGX_MODE=SIM
 
 # run the attester Web UI on the host
 ./build/go/taws web 
+```
+
+### Build and Run with Docker
+
+- Docker workflow uses the SGX SDK environment provided by [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx).
+
+```bash
+# build SGX SDK base image and taws image
+cd scripts/
+./build_taws_in_docker.sh
+
+# run taws web ui
+docker run --network host taws-sim
 ```
 
 For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).

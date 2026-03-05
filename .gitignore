@@ -8,4 +8,4 @@ enclave.signed.so
 enclave.so
 .config_SIM_DEBUG_x64
 ./Enclave/Enclave_private_test.pem
-
+.deps
