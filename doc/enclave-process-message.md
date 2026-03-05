@@ -1,9 +1,5 @@
 # QueryRequest and UpdateMessage Processing Design
 
-## Audience and Intent
-This document is for maintainers and handover engineers of the Enclave implementation.
-Its purpose is to help readers quickly understand process flow, state transitions, and response behavior.
-
 ## 1. Purpose
 This document explains the high-level behavior of `ecall_process_message` for handover and maintenance.
 
@@ -16,7 +12,7 @@ Normative field definitions for `QueryResponse` / `Error` / `Success` follow [dr
 Detailed argument handling, field composition, and exact error mapping are implementation-defined; refer to source code.
 
 ## 3. Process Flow
-Entry point: `ecall_process_message`.
+Entry point: `ecall_process_message`.  
 Detailed interface contract is documented in `Enclave/Enclave.edl` (ECALL declaration).
 
 `ecall_process_message` is an orchestration layer.

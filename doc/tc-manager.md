@@ -1,9 +1,5 @@
 # TC Manager Design
 
-## Audience and Intent
-This document is for maintainers and handover engineers of the Enclave implementation.
-Its purpose is to help readers quickly understand TC record lifecycle, update rules, and change impact points.
-
 ## 1. Purpose
 `tc_manager` is an in-memory ledger module for Trusted Component (TC) records.
 It stores manifest/payload data produced by SUIT processing and provides record lookup/list APIs for other modules.

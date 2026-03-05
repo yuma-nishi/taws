@@ -1,9 +1,5 @@
 # SUIT Processor Design
 
-## Audience and Intent
-This document is for maintainers and handover engineers of the Enclave implementation.
-Its purpose is to help readers quickly understand process flow, module boundaries, and failure behavior when changing SUIT-related processing.
-
 ## 1. Purpose
 This document describes the high-level behavior of the SUIT callback wrapper module in Enclave.
 

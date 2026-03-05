@@ -1,9 +1,5 @@
 # invoke_wasm Design
 
-## Audience and Intent
-This document is for maintainers and handover engineers of the Enclave implementation.
-Its purpose is to help readers quickly understand process flow, interface contract, and failure behavior when changing `ecall_invoke_wasm`.
-
 ## 1. Purpose
 This document describes the high-level behavior and caller contract of `ecall_invoke_wasm`.
 
@@ -13,7 +9,7 @@ This document describes the high-level behavior and caller contract of `ecall_in
 - Caller implementation: `App/src/attester_api.cpp` (`attester_invoke_wasm`)
 
 ## 3. Process Flow
-Entry point: `ecall_invoke_wasm`.
+Entry point: `ecall_invoke_wasm`.  
 Detailed interface contract is documented in `Enclave/Enclave.edl` (ECALL declaration).
 
 The module executes a stored WASM app in Enclave using WAMR.

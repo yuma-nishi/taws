@@ -93,7 +93,7 @@ Design docs are organized by audience and hierarchy.
   - Purpose: Internal architecture overview, high-level flow.
   - Related details:
     - [enclave-process-message.md](./doc/enclave-process-message.md)
-      - Audience: TEE maintainers
+      - Audience: TEE maintainers / REE-side developers (ECALL callers)
       - Purpose: High-level flow and state behavior of `ecall_process_message`.
     - [suit-processor.md](./doc/suit-processor.md)
       - Audience: TEE maintainers
@@ -102,7 +102,7 @@ Design docs are organized by audience and hierarchy.
       - Audience: TEE maintainers
       - Purpose: TC record lifecycle and record update policy.
     - [invoke_wasm.md](./doc/invoke_wasm.md)
-      - Audience: TEE maintainers
+      - Audience: TEE maintainers / REE-side developers (ECALL callers)
       - Purpose: `ecall_invoke_wasm` flow and failure behavior summary.
 
 
