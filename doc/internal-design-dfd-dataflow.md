@@ -43,15 +43,17 @@ flowchart LR
   end
 
 
-  User -->|image| Browser
-  Browser -->|HTTP: image| Web
-  Web -->|HTTP: html, image| Browser
+  User -->|input_image| Browser
+  Browser -->|HTTP: input_image| Web
+  Web -->|HTTP: html, output_image| Browser
   Main -->|wappName, funcName| Web
-  Web -->|wappName, funcName, image| Bridge
-  Bridge -->|wappName, funcName, image| CAPI
+  Web -->|wappName, funcName, input_image| Bridge
+  Bridge -->|output_image| Web
+  Bridge -->|wappName, funcName, input_image| CAPI
+  CAPI -->|output_image| Bridge
   CAPI -->|wappName| Session
-  CAPI -->|ECALL: wappName, funcName, image| TEEEntry
-  TEEEntry -->|image| CAPI
+  CAPI -->|ECALL: wappName, funcName, input_image| TEEEntry
+  TEEEntry -->|output_image| CAPI
 
   Session -->|QueryResponse / SuccessMessage| HTTP
   HTTP -->|QueryRequest / UpdateMessage| Session
@@ -64,7 +66,6 @@ flowchart LR
 ### 3.2 TEE DFD
 ```mermaid
 flowchart LR
-
 
   subgraph Device[TEE Device]
   direction LR
@@ -90,8 +91,8 @@ flowchart LR
 
   REEEntry -->|"ECALL:<br/> QueryRequest / UpdateMessage"| EPM
   EPM -->|"QueryResponse / SuccessMessage"| REEEntry
-  REEEntry -->|ECALL: wapp_name, funcName, image| EWASM
-  EWASM -->|image| REEEntry
+  REEEntry -->|ECALL: wapp_name, funcName, input_image| EWASM
+  EWASM -->|output_image| REEEntry
 
   AgentKey -->|AgentPublicKey, AgentPrivateKey| EPM
   SuitKey -->|SuitPrivateKey| EPM
@@ -114,8 +115,8 @@ flowchart LR
   EPM[Enclave_process_message.cpp]
   EWASM[Enclave_wasm.cpp]
 
-  CAPI -->|ECALL appName,func,image| EWASM
-  EWASM -->|output bytes| CAPI
+  CAPI -->|ECALL appName,func,input_image| EWASM
+  EWASM -->|output_image| CAPI
 
   Session -->|ECALL teep message| EPM
   EPM -->| teep message| Session

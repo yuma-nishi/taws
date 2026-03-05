@@ -56,8 +56,8 @@ direction LR
 end
 
 %% =============== User interactions ===============
-User -->|"image"| Browser
-Browser -->|"HTTP REQ:image"| Cmd
+User -->|"input_image"| Browser
+Browser -->|"HTTP: input_image"| Cmd
 
 
 %% =============== TEEP message flow ===============
@@ -72,15 +72,15 @@ Suit -->|"app_name,wasm_binary"| Tc
 Tc -->|"Save: app_name,wasm_binary"| Tc-record
 
 %% =============== Wasm execution (conceptual) ===============
-Cmd -->|"app_name, func_name, image"| App
-App -->|"ECALL: app_name, func_name, image"| Wamr
+Cmd -->|"app_name, func_name, input_image"| App
+App -->|"ECALL: app_name, func_name, input_image"| Wamr
 Tc-record -->|"wasm_binary"| Tc
 Wamr -->|"app_name"| Tc
 Tc -->|"wasm_binary"| Wamr
-Wamr -->|"image"| App
-App -->|"image"| Cmd
-Cmd -->|"HTTP RES:image"| Browser
-Browser -->|"result (image)"| User
+Wamr -->|"output_image"| App
+App -->|"output_image"| Cmd
+Cmd -->|"HTTP: output_image"| Browser
+Browser -->|"output_image"| User
 ```
 
 

@@ -71,18 +71,39 @@ For Web Server usage (with diagram), CLI usage details, and full options, see [U
 
 ## Design Documents
 
-The following table summarizes design documents by audience and intent.
+Design docs are organized by audience and hierarchy.
 
-| Document | Audience | Purpose |
-| --- | --- | --- |
-| [ExternalDesignDocument.md](./doc/ExternalDesignDocument.md) | TAM developers / external integrators | External behavior and interface overview of the TEE Device. |
-| [external-design-web-ui-api.md](./doc/external-design-web-ui-api.md) | Web/CLI client implementers | Web UI API contract (`/teep`, `/detect`) and UI-facing error behavior. |
-| [external-design-teep-tam-exchange.md](./doc/external-design-teep-tam-exchange.md) | TAM developers | TEEP-over-HTTP exchange contract between TEE Device and TAM. |
-| [InternalDesignDocument.md](./doc/InternalDesignDocument.md) | TEE maintainers | Internal architecture overview, high-level flow, and module responsibilities. |
-| [enclave-process-message.md](./doc/enclave-process-message.md) | TEE maintainers | High-level flow and state behavior of `ecall_process_message`. |
-| [suit-processor.md](./doc/suit-processor.md) | TEE maintainers | SUIT callback-wrapper flow, entry points, and failure behavior summary. |
-| [tc-manager.md](./doc/tc-manager.md) | TEE maintainers | TC record lifecycle, update policy, and API role summary. |
-| [invoke_wasm.md](./doc/invoke_wasm.md) | TEE maintainers | `ecall_invoke_wasm` flow, failure behavior summary, and test coverage summary. |
+### External Design (for TAM developers , Web/CLI client implementers)
+
+- [ExternalDesignDocument.md](./doc/ExternalDesignDocument.md)
+  - Audience: TAM developers , Web/CLI client implementers
+  - Purpose: External behavior and interface overview of the TEE Device.
+  - Includes:
+    - [external-design-web-ui-api.md](./doc/external-design-web-ui-api.md)
+      - Audience: Web/CLI client implementers
+      - Purpose: Web UI API contract (`/teep`, `/detect`) and UI-facing error behavior.
+    - [external-design-teep-tam-exchange.md](./doc/external-design-teep-tam-exchange.md)
+      - Audience: TAM developers
+      - Purpose: TEEP-over-HTTP exchange contract between TEE Device and TAM.
+
+### Internal Design (for TEE maintainers)
+
+- [InternalDesignDocument.md](./doc/InternalDesignDocument.md)
+  - Audience: TEE maintainers
+  - Purpose: Internal architecture overview, high-level flow.
+  - Related details:
+    - [enclave-process-message.md](./doc/enclave-process-message.md)
+      - Audience: TEE maintainers
+      - Purpose: High-level flow and state behavior of `ecall_process_message`.
+    - [suit-processor.md](./doc/suit-processor.md)
+      - Audience: TEE maintainers
+      - Purpose: SUIT callback-wrapper flow, entry points, and failure behavior summary.
+    - [tc-manager.md](./doc/tc-manager.md)
+      - Audience: TEE maintainers
+      - Purpose: TC record lifecycle and record update policy.
+    - [invoke_wasm.md](./doc/invoke_wasm.md)
+      - Audience: TEE maintainers
+      - Purpose: `ecall_invoke_wasm` flow and failure behavior summary.
 
 
 # Acknowledgement
