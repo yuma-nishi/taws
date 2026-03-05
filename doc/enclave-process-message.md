@@ -20,8 +20,8 @@ Entry point: `ecall_process_message`.
 Detailed interface contract is documented in `Enclave/Enclave.edl` (ECALL declaration).
 
 `ecall_process_message` is an orchestration layer.
-- `process_query_request`: builds `QUERY_RESPONSE` or `ERROR_MESSAGE`
-- `process_update`: builds `SUCCESS_MESSAGE` or `ERROR_MESSAGE`
+- `process_query_request`: negotiates version/cipher suite, builds `QUERY_RESPONSE` (including requested evidence / trusted_components data), or returns `ERROR_MESSAGE` when validation/build fails.
+- `process_update`: validates `token` / `manifest_list`, processes manifests via SUIT and updates TC records, then builds `SUCCESS_MESSAGE` (optionally with SUIT report) or returns `ERROR_MESSAGE`.
 
 ### 3.1 Sequence Diagram (`ecall_process_message`)
 ```mermaid
