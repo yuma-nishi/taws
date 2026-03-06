@@ -60,7 +60,7 @@ cd scripts/ && ./build_third_party.sh
 # build
 cd .. && make SGX_MODE=SIM
 
-# run the attester Web UI on the host
+# run the taws web server on the host
 ./build/go/taws web 
 ```
 
@@ -73,7 +73,7 @@ cd .. && make SGX_MODE=SIM
 cd scripts/
 ./build_taws_in_docker.sh
 
-# run taws web ui
+# run taws web server
 docker run --network host taws-sim
 ```
 
