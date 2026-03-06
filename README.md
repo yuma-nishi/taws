@@ -67,11 +67,9 @@ For Web Server usage (with diagram), CLI usage details, and full options, see [U
 
 ### Build and Run with Docker
 
-- Docker workflow uses the SGX SDK environment provided by [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx).
-
 #### Prepare SGX Base Image
 
-This step prepares the SGX SDK base image (`sgx_sample_deb`) used by the TAWS Docker build.
+This step prepares the SGX SDK base image from [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx), which is used by the TAWS Docker build.
 
 ```bash
 cd scripts/
