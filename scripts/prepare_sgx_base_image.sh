@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+#
+# * Copyright (c) 2026 SECOM CO., LTD. All Rights reserved.
+# *
+# * SPDX-License-Identifier: BSD-2-Clause
+#
+
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,12 +36,7 @@ echo "[INFO] preparing confidential-computing.sgx..."
     ../../
 )
 
-echo "[INFO] building taws image: taws-sim"
-(
-  cd "${TAWS_ROOT}"
-  docker build -t taws-sim .
-)
 
 echo "[INFO] done"
 echo "  - base image: sgx_sample_deb"
-echo "  - taws image: taws-sim"
+

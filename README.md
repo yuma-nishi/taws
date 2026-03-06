@@ -63,21 +63,35 @@ cd .. && make SGX_MODE=SIM
 # run the taws web server on the host
 ./build/go/taws web 
 ```
+For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).
 
 ### Build and Run with Docker
 
 - Docker workflow uses the SGX SDK environment provided by [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx).
 
-```bash
-# build SGX SDK base image and taws image
-cd scripts/
-./build_taws_in_docker.sh
+#### Prepare SGX Base Image
 
-# run taws web server
-docker run --network host taws-sim
+This step prepares the SGX SDK base image (`sgx_sample_deb`) used by the TAWS Docker build.
+
+```bash
+cd scripts/
+./prepare_sgx_base_image.sh
 ```
 
-For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).
+#### Build and Run TAWS in Docker
+
+This step builds the `taws-sim` image and runs the TAWS web server.
+
+```bash
+docker build -t taws-sim .
+
+# run taws web ui
+docker run --rm --network host \
+  -e TAWS_WEB_ADDR=127.0.0.1:8081 \
+  -e TAWS_TAM_URL=http://127.0.0.1:8080/tam \
+  taws-sim
+```
+
 
 
 ## Design Documents

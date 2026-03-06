@@ -43,16 +43,18 @@ require_dir "${WAMR_SGX_PLATFORM_DIR}"
 
 build_sgxssl() {
   echo "[INFO] Building SGXSSL..."
-  pushd "${SGXSSL_OPENSSL_SOURCE_DIR}"
-  if [[ ! -f openssl-3.0.18.tar.gz ]]; then
-    wget https://github.com/openssl/openssl/releases/download/openssl-3.0.18/openssl-3.0.18.tar.gz
-  fi
-  popd
+  (
+    cd "${SGXSSL_OPENSSL_SOURCE_DIR}"
+    if [[ ! -f openssl-3.0.18.tar.gz ]]; then
+      wget https://github.com/openssl/openssl/releases/download/openssl-3.0.18/openssl-3.0.18.tar.gz
+    fi
+  )
 
-  pushd "${SGXSSL_DIR}"
-  ./build_openssl.sh
-  make SGX_MODE=SIM
-  popd
+  (
+    cd "${SGXSSL_DIR}"
+    ./build_openssl.sh
+    make SGX_MODE=SIM
+  )
 
   require_dir "${SGXSSL_INC}"
   require_dir "${SGXSSL_LIB}"
@@ -62,14 +64,14 @@ build_sgxssl() {
 build_wamr() {
   echo "[INFO] Building wasm-micro-runtime (linux-sgx)..."
   source /opt/intel/sgxsdk/environment
-  pushd "${WAMR_SGX_PLATFORM_DIR}"
-  rm -rf build
-  mkdir -p build
-  pushd build
-  cmake .. -DWAMR_BUILD_DUMP_CALL_STACK=1 
-  make
-  popd
-  popd
+  (
+    cd "${WAMR_SGX_PLATFORM_DIR}"
+    rm -rf build
+    mkdir -p build
+    cd build
+    cmake ..
+    make
+  )
 }
 
 
