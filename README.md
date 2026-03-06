@@ -49,6 +49,7 @@ The TEE Device uses the following libraries.
 
 - You need an environment where Intel SGX simulation mode is available.
   See [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx) for details.
+- Required version: Go >= 1.22.
 - The host build has been tested on **Ubuntu 22.04 LTS**. Other Linux distributions may work but have not been verified.
 - For a host-only workflow, install dependencies locally, build the project, launch the TAM server, and then run the teep agent from the host environment.
 

@@ -6,22 +6,11 @@ ARG GO_VERSION=1.22.12
 USER root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    automake \
-    autoconf \
-    build-essential \
-    ca-certificates \
     cmake \
     gcc \
-    git \
     g++ \
-    libssl-dev \
-    libtool \
     make \
-    ocaml \
-    ocamlbuild \
     perl \
-    pkg-config \
-    python-is-python3 \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
