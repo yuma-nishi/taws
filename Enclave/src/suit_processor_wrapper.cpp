@@ -164,14 +164,21 @@ extern "C" suit_err_t __real_suit_report_callback(suit_report_args_t report_args
 extern "C" suit_err_t __wrap_suit_report_callback(suit_report_args_t report_args)
 {
     suit_err_t result = SUIT_SUCCESS;
+    const bool has_report = !UsefulBuf_IsNULLOrEmptyC(report_args.suit_report);
 #ifdef DEBUG
-    result = __real_suit_report_callback(report_args);
-    if (result != SUIT_SUCCESS) {
-        return SUIT_ERR_WHILE_REPORTING;
+    /*
+     * libcsuit's default print callback expects a valid report buffer.
+     * Guard empty reports to avoid NULL dereference in debug builds.
+     */
+    if (has_report) {
+        result = __real_suit_report_callback(report_args);
+        if (result != SUIT_SUCCESS) {
+            return SUIT_ERR_WHILE_REPORTING;
+        }
     }
 #endif
 
-    if (!UsefulBuf_IsNULLOrEmptyC(report_args.suit_report)) {
+    if (has_report) {
         uint8_t *copied_report = NULL;
         suit_clear_report_internal();
         copied_report = (uint8_t *)malloc(report_args.suit_report.len);

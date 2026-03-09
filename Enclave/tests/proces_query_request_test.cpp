@@ -181,7 +181,7 @@ static void test_process_query_request_returns_error_when_app_name_is_invalid(vo
 
     assert(process_query_request(&query_request, msg_buf, NULL, &key_pair, &message) == TEEP_SUCCESS);
     const teep_error_t *teep_error = (const teep_error_t *)&message;
-    assert(teep_error->type == TEEP_TYPE_TEEP_ERROR);
+    assert(teep_error->type == TEEP_TYPE_ERROR);
 }
 
 int main(void)
