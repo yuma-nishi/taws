@@ -162,7 +162,7 @@ teep_err_t create_error(teep_buf_t token,
                         teep_message_t *message)
 {
     teep_error_t *error = (teep_error_t *)message;
-    error->type = TEEP_TYPE_TEEP_ERROR;
+    error->type = TEEP_TYPE_ERROR;
     error->contains = 0;
     error->err_code = (teep_err_code_t)err_code;
 
@@ -580,7 +580,7 @@ teep_err_t process_update(const teep_update_t *update,
     }
 
     // create SUCCESS message
-    success->type = TEEP_TYPE_TEEP_SUCCESS;
+    success->type = TEEP_TYPE_SUCCESS;
     success->contains = TEEP_MESSAGE_CONTAINS_TOKEN;
     success->token = update->token;
     suit_report = suit_get_suit_report(&suit_report_len);
@@ -658,9 +658,13 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
 
-    teep_set_message_from_bytes(
+    result = teep_set_message_from_bytes(
         const_cast<uint8_t *>(static_cast<const uint8_t *>(payload.ptr)),
         payload.len, &recv_message);
+    if (result != TEEP_SUCCESS) {
+        PRINT_DEBUG_LOG("main : Failed to decode TEEP message payload. %s(%d)\n", teep_err_to_str(result), result);
+        return ECALL_PROCESS_TEEP_RESULT_FATAL;
+    }
 
 
     switch (recv_message.teep_message.type) {
@@ -696,7 +700,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
         g_agent_status = WAITING_UPDATE_OR_QUERY_REQUEST;
     }else if (g_agent_status == WAITING_UPDATE_OR_QUERY_REQUEST &&
-        send_message.teep_message.type == TEEP_TYPE_TEEP_SUCCESS) {
+        send_message.teep_message.type == TEEP_TYPE_SUCCESS) {
         g_agent_status = WAITING_QUERY_REQUEST;
     }
 
@@ -732,7 +736,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         free_query_response_tc_list_buffers(&send_message.query_response);
     }
 
-    if (send_message.teep_message.type == TEEP_TYPE_TEEP_ERROR) {
+    if (send_message.teep_message.type == TEEP_TYPE_ERROR) {
         return ECALL_PROCESS_TEEP_RESULT_RESPONSE_IS_TEEP_ERROR;
     }
     if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE &&
