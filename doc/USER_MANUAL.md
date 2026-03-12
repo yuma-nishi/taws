@@ -40,6 +40,12 @@ Web page:
 
 ![Web-UI](images/image-pre.png)
 
+Notes:
+- The current `detector-yolov8` Wasm app expects JPEG input.
+- `POST /detect` currently rejects uploads larger than `128 KiB`.
+- Detection cost is affected not only by image dimensions but also by image content such as scene complexity, noise, and the number of candidate objects.
+- In the current SGX/WAMR-based execution environment, some JPEG images may fail during inference even when their file size is small. If detection fails, first try a simpler image.
+
 ## CLI Usage
 Start CLI:
 
@@ -55,6 +61,10 @@ detector [--wapp NAME] [--func NAME] [--max-output BYTES] <input.jpg> [output.jp
 help
 exit
 ```
+
+Notes:
+- `detector` expects a JPEG input file.
+- Detection success in the current TEE demo depends on image characteristics as well as file size; some images with complex scenes may fail even if smaller images succeed.
 
 ## Options
 ### Common Option

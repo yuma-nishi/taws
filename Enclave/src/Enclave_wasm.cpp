@@ -15,9 +15,10 @@
 static bool runtime_inited = false;
 // Conservative defaults validated for the current workload.
 // TODO: tune with measurement (max stack depth / peak heap) to reduce enclave memory usage.
-static const uint32_t wamr_instantiate_stack_size = 16 * 1024 * 1024;
-static const uint32_t wamr_instantiate_heap_size = 256 * 1024 * 1024;
-static const uint32_t wamr_exec_env_stack_size = 4 * 1024 * 1024;
+static const uint32_t wamr_instantiate_stack_size = 32 * 1024 * 1024;
+static const uint32_t wamr_instantiate_heap_size = 512 * 1024 * 1024;
+static const uint32_t wamr_exec_env_stack_size = 32 * 1024 * 1024;
+static uint8_t wamr_global_heap_buf[wamr_instantiate_heap_size];
 
 typedef struct WamrLoadedModule {
     char wapp_name[SUIT_MAX_NAME_LENGTH];
@@ -80,7 +81,9 @@ ensure_wamr_running(const char *wapp_name)
     if (!runtime_inited) {
         RuntimeInitArgs init_args;
         memset(&init_args, 0, sizeof(RuntimeInitArgs));
-        init_args.mem_alloc_type = Alloc_With_System_Allocator;
+        init_args.mem_alloc_type = Alloc_With_Pool;
+        init_args.mem_alloc_option.pool.heap_buf = wamr_global_heap_buf;
+        init_args.mem_alloc_option.pool.heap_size = sizeof(wamr_global_heap_buf);
         if (!wasm_runtime_full_init(&init_args)) {
             PRINT_DEBUG_LOG("EnsureWamrRunning: Init runtime environment failed.\n");
             return ECALL_WASM_RESULT_INTERNAL_ERROR;

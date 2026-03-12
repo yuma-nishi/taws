@@ -21,8 +21,22 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
 
 static bool g_initialized = false;
 static bool g_key_ready = false;
+static bool g_stdio_configured = false;
+
+static void configure_stdio(void)
+{
+    if (g_stdio_configured) {
+        return;
+    }
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    g_stdio_configured = true;
+}
+
 static int sgx_initialized(const char *keygen_mode)
 {
+    configure_stdio();
+
     if (g_initialized) {
         return 0;
     }

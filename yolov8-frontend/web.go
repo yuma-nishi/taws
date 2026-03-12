@@ -8,6 +8,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"html/template"
 	"io"
 	"log"
@@ -42,6 +43,8 @@ type detectResponse struct {
 	err    error
 }
 
+const maxDetectUploadBytes = 128 * 1024
+
 func (s *detectorServer) init() error {
 	s.once.Do(func() {
 		s.reqCh = make(chan detectRequest)
@@ -74,6 +77,7 @@ func (s *detectorServer) runWorker() {
 func (s *detectorServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		log.Println("method not allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -85,31 +89,50 @@ func (s *detectorServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (s *detectorServer) handleDetect(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		log.Println("method not allowed")
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxDetectUploadBytes)
 	if err := s.init(); err != nil {
 		http.Error(w, "init failed", http.StatusInternalServerError)
+		log.Println("init failed")
 		return
 	}
 
 	if err := r.ParseMultipartForm(16 << 20); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "image upload too large", http.StatusRequestEntityTooLarge)
+			log.Printf("image upload too large: limit=%d", maxDetectUploadBytes)
+			return
+		}
 		http.Error(w, "invalid multipart form", http.StatusBadRequest)
+		log.Printf("invalid multipart form")
 		return
 	}
 	file, _, err := r.FormFile("image")
 	if err != nil {
 		http.Error(w, "missing image", http.StatusBadRequest)
+		log.Printf("missing image")
 		return
 	}
 	defer file.Close()
 
 	inputBytes, err := io.ReadAll(file)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "image upload too large", http.StatusRequestEntityTooLarge)
+			log.Printf("image upload too large while reading: limit=%d", maxDetectUploadBytes)
+			return
+		}
 		http.Error(w, "read image failed", http.StatusBadRequest)
+		log.Printf("read image failed")
 		return
 	}
 	if len(inputBytes) == 0 {
 		http.Error(w, "empty image", http.StatusBadRequest)
+		log.Printf("empty image")
 		return
 	}
 
@@ -118,6 +141,7 @@ func (s *detectorServer) handleDetect(w http.ResponseWriter, r *http.Request) {
 	resp := <-respCh
 	if resp.err != nil {
 		http.Error(w, "invoke detector failed", http.StatusInternalServerError)
+		log.Printf("invoke detector failed")
 		return
 	}
 
@@ -131,6 +155,7 @@ func (s *detectorServer) handleDetect(w http.ResponseWriter, r *http.Request) {
 func (s *detectorServer) handleTEEP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		log.Println("method not allowed")
 		return
 	}
 	s.mu.Lock()
@@ -138,17 +163,20 @@ func (s *detectorServer) handleTEEP(w http.ResponseWriter, r *http.Request) {
 	att := &Attester{}
 	if err := att.InitializeEnclave(s.cfg.keygen); err != nil {
 		http.Error(w, "install failed", http.StatusInternalServerError)
+		log.Println("install failed")
 		return
 	}
 	result, err := att.RunInstallSession(s.cfg.tamURL, s.cfg.wappName)
 	if err != nil {
 		http.Error(w, "install failed", http.StatusInternalServerError)
+		log.Println("install failed")
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if result == TeepSessionResultOKDeviceActivated {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("The device has been activated. You can install the app."))
+		log.Println("The device has been activated. You can install the app.")
 		return
 	}
 	w.WriteHeader(http.StatusOK)
