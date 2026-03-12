@@ -10,7 +10,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Attester Detector</title>
+  <title>TAWS Console</title>
   <style>
     :root {
       --blue: #01519b;
@@ -191,7 +191,7 @@
   <main class="app">
     <header class="hero fade-up">
       <div>
-        <h1>Attester Detector</h1>
+        <h1>TAWS Console</h1>
         <p>Drop an image to run YOLOv8 inside the SGX-backed WASM runtime.</p>
       </div>
       <div class="badge">SGX · WASM · TEEP</div>
@@ -226,6 +226,7 @@
     const runBtn = document.getElementById('runBtn');
     const installBtn = document.getElementById('installBtn');
     const status = document.getElementById('status');
+    const maxDetectUploadBytes = 128 * 1024;
 
     let selectedFile = null;
     let teepActivated = false;
@@ -242,6 +243,10 @@
     function handleFile(file) {
       if (!file || !file.type.startsWith('image/')) {
         setStatus('Please provide an image file.', true);
+        return;
+      }
+      if (file.size > maxDetectUploadBytes) {
+        setStatus('Image upload too large. Current limit: 128 KiB.', true);
         return;
       }
       selectedFile = file;
@@ -279,6 +284,10 @@
 
     runBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
+      if (selectedFile.size > maxDetectUploadBytes) {
+        setStatus('Image upload too large. Current limit: 128 KiB.', true);
+        return;
+      }
       setStatus('Running detector...', false);
       runBtn.disabled = true;
       try {
@@ -289,7 +298,8 @@
           body: formData,
         });
         if (!response.ok) {
-          throw new Error(`Request failed: ${response.status}`);
+          const message = (await response.text()).trim();
+          throw new Error(message || `Request failed: ${response.status}`);
         }
         const blob = await response.blob();
         outputPreview.src = URL.createObjectURL(blob);
@@ -297,7 +307,11 @@
         setStatus('Detection complete.', false);
       } catch (err) {
         console.error(err);
-        setStatus('Detection failed. Check server logs.', true);
+        if (err.message && err.message.includes('NetworkError')) {
+          setStatus('Detection failed before a response was received. If the image is large, try a file under 128 KiB.', true);
+        } else {
+          setStatus(err.message || 'Detection failed.', true);
+        }
       } finally {
         runBtn.disabled = false;
       }
@@ -309,7 +323,8 @@
       try {
         const response = await fetch('/teep', { method: 'POST' });
         if (!response.ok) {
-          throw new Error(`Install failed: ${response.status}`);
+          const message = (await response.text()).trim();
+          throw new Error(message || `Install failed: ${response.status}`);
         }
         const message = (await response.text()).trim();
         if (message === 'The device has been activated. You can install the app.') {
@@ -319,7 +334,13 @@
         setStatus(message || 'TEEP install finished.', false);
       } catch (err) {
         console.error(err);
-        setStatus('TEEP install failed. Check server logs.', true);
+        const message = err.message === 'install failed'
+          ? (teepActivated ? 'TEEP install failed.' : 'TEEP activation failed.')
+          : err.message;
+        setStatus(
+          message || (teepActivated ? 'TEEP install failed.' : 'TEEP activation failed.'),
+          true
+        );
       } finally {
         installBtn.disabled = false;
       }
