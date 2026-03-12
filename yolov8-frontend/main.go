@@ -23,7 +23,7 @@ const (
 	defaultKeygen   = "yes"
 	defaultWappName = "yolov8.wasm"
 	defaultFuncName = "detector_yolov8_wasm"
-	defaultAddr     = "127.0.0.1:8081"
+	defaultAddr     = "127.0.0.1:8181"
 	defaultMaxOut   = 16 << 20
 )
 

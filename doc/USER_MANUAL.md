@@ -37,8 +37,15 @@ Default URL:
 - `http://127.0.0.1:8081`
 
 Web page:
+- Open the Web UI URL to display the initial screen. Click `Activate (TEEP)` first to register the device with the TAM. After successful activation, the button changes to `Install (TEEP)` so that the detector Wasm app can be installed.
+![Web-UI-1](images/screen_1.png)
 
-![Web-UI](images/image-pre.png)
+- Click `Install (TEEP)` to start installation of the detector Wasm app.
+![Web-UI-2](images/screen_2.png)
+
+- After installation, select an input image and click `Run detector` to process the image and display the annotated result.
+![Web-UI-3](images/screen_3.png)
+
 
 Notes:
 - The current `detector-yolov8` Wasm app expects JPEG input.
