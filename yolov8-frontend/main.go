@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ const (
 	defaultKeygen   = "yes"
 	defaultWappName = "yolov8.wasm"
 	defaultFuncName = "detector_yolov8_wasm"
-	defaultAddr     = "127.0.0.1:8081"
+	defaultAddr     = "127.0.0.1:8181"
 	defaultMaxOut   = 16 << 20
 )
 
@@ -75,7 +76,7 @@ func runCLI(args []string) {
 	}
 	defer att.Close()
 
-	fmt.Println("attester cli mode (init once). commands: install, detector, help, exit")
+	log.Println("attester cli mode (init once). commands: install, detector, help, exit")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -143,10 +144,10 @@ func runInstallSession(att *Attester, args []string) error {
 		return err
 	}
 	if result == TeepSessionResultOKDeviceActivated {
-		fmt.Println("The device has been activated. You can install the app.")
+		log.Println("The device has been activated. You can install the app.")
 		return nil
 	}
-	fmt.Println("TEEP install finished.")
+	log.Println("TEEP install finished.")
 	return nil
 }
 
@@ -185,7 +186,7 @@ func runDetectorSession(att *Attester, args []string) error {
 	if err := os.WriteFile(outputPath, output, 0644); err != nil {
 		return err
 	}
-	fmt.Printf("wrote %s\n", outputPath)
+	log.Printf("wrote %s", outputPath)
 	return nil
 }
 

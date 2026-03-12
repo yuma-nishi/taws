@@ -37,8 +37,21 @@ Default URL:
 - `http://127.0.0.1:8081`
 
 Web page:
+- Open the Web UI URL to display the initial screen. Click `Activate (TEEP)` first to register the device with the TAM. After successful activation, the button changes to `Install (TEEP)` so that the detector Wasm app can be installed.
+![Web-UI-1](images/screen_1.png)
 
-![Web-UI](images/image-pre.png)
+- Click `Install (TEEP)` to start installation of the detector Wasm app.
+![Web-UI-2](images/screen_2.png)
+
+- After installation, select an input image and click `Run detector` to process the image and display the annotated result.
+![Web-UI-3](images/screen_3.png)
+
+
+Notes:
+- The current `detector-yolov8` Wasm app expects JPEG input.
+- `POST /detect` currently rejects uploads larger than `128 KiB`.
+- Detection cost is affected not only by image dimensions but also by image content such as scene complexity, noise, and the number of candidate objects.
+- In the current SGX/WAMR-based execution environment, some JPEG images may fail during inference even when their file size is small. If detection fails, first try a simpler image.
 
 ## CLI Usage
 Start CLI:
@@ -55,6 +68,10 @@ detector [--wapp NAME] [--func NAME] [--max-output BYTES] <input.jpg> [output.jp
 help
 exit
 ```
+
+Notes:
+- `detector` expects a JPEG input file.
+- Detection success in the current TEE demo depends on image characteristics as well as file size; some images with complex scenes may fail even if smaller images succeed.
 
 ## Options
 ### Common Option
