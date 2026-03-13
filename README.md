@@ -93,12 +93,11 @@ This step builds the `taws-sim` image and runs the TAWS web server.
 docker build -t taws-sim .
 
 # run taws web ui
-docker run --rm --network host \
-  -e TAWS_WEB_ADDR=127.0.0.1:8181 \
+docker run --rm -p 8181:8181 \
+  -e TAWS_WEB_ADDR=0.0.0.0:8181 \
   -e TAWS_TAM_URL=http://127.0.0.1:8080/tam \
   taws-sim
 ```
-
 
 
 ## Design Documents
