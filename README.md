@@ -45,12 +45,21 @@ The TEE Device uses the following libraries.
 
 ## Getting started
 
+### Clone the Repository
+
+This repository uses git submodules for `third_party` dependencies.
+
+```bash
+git clone --recurse-submodules https://github.com/yuma-nishi/taws.git
+cd taws
+```
+
 ### Build and Run the TEEP Agent
 
 - You need an environment where Intel SGX simulation mode is available.
   See [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx) for details.
 - Required version: Go >= 1.22.
-- The host build has been tested on **Ubuntu 22.04 LTS**. Other Linux distributions may work but have not been verified.
+- The host build has been tested on **Ubuntu 24.04 LTS**. Other Linux distributions may work but have not been verified.
 - For a host-only workflow, install dependencies locally, build the project, launch the TAM server, and then run the teep agent from the host environment.
 
 ```bash
@@ -85,7 +94,7 @@ docker build -t taws-sim .
 
 # run taws web ui
 docker run --rm --network host \
-  -e TAWS_WEB_ADDR=127.0.0.1:8081 \
+  -e TAWS_WEB_ADDR=127.0.0.1:8181 \
   -e TAWS_TAM_URL=http://127.0.0.1:8080/tam \
   taws-sim
 ```

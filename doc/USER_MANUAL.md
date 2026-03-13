@@ -34,7 +34,7 @@ Usage:
 ```
 
 Default URL:
-- `http://127.0.0.1:8081`
+- `http://127.0.0.1:8181`
 
 Web page:
 - Open the Web UI URL to display the initial screen. Click `Activate (TEEP)` first to register the device with the TAM. After successful activation, the button changes to `Install (TEEP)` so that the detector Wasm app can be installed.
@@ -97,7 +97,7 @@ Notes:
 
 | Option | Description |
 |---------|-------------|
-| `web --addr ADDR` | Web server bind address. Default: `127.0.0.1:8081`. |
+| `web --addr ADDR` | Web server bind address. Default: `127.0.0.1:8181`. |
 | `web --url URL` | TAM URL used by `POST /teep`. Default: `http://localhost:8080/tam`. |
 | `web --wapp NAME` | WASM app name used by Web install/detect flow. Default: `yolov8.wasm`. |
 | `web --func NAME` | WASM function used by Web detect flow. Default: `detector_yolov8_wasm`. |
