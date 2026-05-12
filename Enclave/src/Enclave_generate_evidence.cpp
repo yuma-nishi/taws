@@ -21,6 +21,20 @@ extern "C" {
 #include "debug_print.h"
 #include "attester_es256_key.h"
 
+#include "sgx_error.h"
+#include "sgx_report.h"
+#include "sgx_tcrypto.h"
+#include "sgx_utils.h"
+
+extern "C" sgx_status_t ocall_get_qe_target_info(sgx_status_t *retval,
+                                                  sgx_target_info_t *qe_target_info);
+extern "C" sgx_status_t ocall_get_quote_size(sgx_status_t *retval,
+                                              uint32_t *quote_size);
+extern "C" sgx_status_t ocall_get_quote(sgx_status_t *retval,
+                                         const sgx_report_t *report,
+                                         uint8_t *quote_buf,
+                                         uint32_t quote_size);
+
 
 enum{
     /* common */
@@ -46,7 +60,57 @@ enum{
     ALGORITHM = 1
 };
 
+static teep_err_t teep_err_from_sgx_status(sgx_status_t status)
+{
+    return (status == SGX_SUCCESS) ? TEEP_SUCCESS : TEEP_ERR_UNEXPECTED_ERROR;
+}
 
+static teep_err_t create_dcap_report_data(const teep_query_request_t *query_request,
+                                          const teep_key_t *key_pair,
+                                          sgx_report_data_t *report_data)
+{
+    sgx_status_t sgx_ret = SGX_SUCCESS;
+    sgx_sha_state_handle_t sha_handle = NULL;
+    sgx_sha256_hash_t digest = {0};
+
+    if (query_request == NULL || key_pair == NULL || key_pair->public_key == NULL ||
+        key_pair->public_key_len == 0 || report_data == NULL) {
+        return TEEP_ERR_INVALID_VALUE;
+    }
+
+    memset(report_data, 0, sizeof(*report_data));
+
+    sgx_ret = sgx_sha256_init(&sha_handle);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+
+    sgx_ret = sgx_sha256_update(key_pair->public_key,
+                                (uint32_t)key_pair->public_key_len,
+                                sha_handle);
+    if (sgx_ret == SGX_SUCCESS &&
+        (query_request->contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) &&
+        query_request->challenge.ptr != NULL &&
+        query_request->challenge.len > 0) {
+        sgx_ret = sgx_sha256_update((const uint8_t *)query_request->challenge.ptr,
+                                    (uint32_t)query_request->challenge.len,
+                                    sha_handle);
+    }
+    if (sgx_ret == SGX_SUCCESS) {
+        sgx_ret = sgx_sha256_get_hash(sha_handle, &digest);
+    }
+
+    sgx_status_t close_ret = sgx_sha256_close(sha_handle);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+    if (close_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(close_ret);
+    }
+
+    memcpy(report_data->d, digest, sizeof(digest));
+    return TEEP_SUCCESS;
+}
 
 teep_err_t create_evidence_generic(const teep_query_request_t *query_request,
                                  UsefulBuf buf,
@@ -184,4 +248,66 @@ teep_err_t create_evidence_generic(const teep_query_request_t *query_request,
     return TEEP_SUCCESS;
 }
 
+teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
+                                 UsefulBuf buf,
+                                 teep_key_t *key_pair,
+                                 UsefulBufC *ret)
+{
+    sgx_status_t sgx_ret = SGX_SUCCESS;
+    teep_err_t result = TEEP_SUCCESS;
 
+    if (query_request == NULL || key_pair == NULL || ret == NULL || buf.ptr == NULL || buf.len == 0) {
+        return TEEP_ERR_INVALID_VALUE;
+    }
+    *ret = NULLUsefulBufC;
+
+    /* Get QE target info for an application report addressed to the quoting enclave. */
+    sgx_target_info_t qe_target_info = { 0 };
+    sgx_status_t ocall_ret = SGX_SUCCESS;
+    sgx_ret = ocall_get_qe_target_info(&ocall_ret, &qe_target_info);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+    if (ocall_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(ocall_ret);
+    }
+
+    /* Bind the quote to the TEEP Agent public key and the TAM challenge. */
+    sgx_report_data_t report_data = {};
+    result = create_dcap_report_data(query_request, key_pair, &report_data);
+    if (result != TEEP_SUCCESS) {
+        return result;
+    }
+
+    sgx_report_t report = {};
+    sgx_ret = sgx_create_report(&qe_target_info, &report_data, &report);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+
+    uint32_t required_quote_size = 0;
+    ocall_ret = SGX_SUCCESS;
+    sgx_ret = ocall_get_quote_size(&ocall_ret, &required_quote_size);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+    if (ocall_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(ocall_ret);
+    }
+    if (required_quote_size == 0 || required_quote_size > buf.len) {
+        return TEEP_ERR_NO_MEMORY;
+    }
+
+    ocall_ret = SGX_SUCCESS;
+    sgx_ret = ocall_get_quote(&ocall_ret, &report, (uint8_t *)buf.ptr, required_quote_size);
+    if (sgx_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(sgx_ret);
+    }
+    if (ocall_ret != SGX_SUCCESS) {
+        return teep_err_from_sgx_status(ocall_ret);
+    }
+
+    ret->ptr = buf.ptr;
+    ret->len = required_quote_size;
+    return TEEP_SUCCESS;
+}

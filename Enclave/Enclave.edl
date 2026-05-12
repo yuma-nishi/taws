@@ -10,6 +10,7 @@
 
 enclave {
     include "stdint.h"
+    include "sgx_report.h"
     include "ecall_wasm_result.h"
     include "ecall_process_teep_result.h"
 
@@ -58,6 +59,20 @@ enclave {
      */
     untrusted {
         void ocall_print_string([in, string] const char *str);
+
+        sgx_status_t ocall_get_qe_target_info(
+            [out] sgx_target_info_t* qe_target_info
+        );
+
+        sgx_status_t ocall_get_quote_size(
+            [out] uint32_t* quote_size
+        );
+
+        sgx_status_t ocall_get_quote(
+            [in] const sgx_report_t* report,
+            [out, size=quote_size] uint8_t* quote_buf,
+            uint32_t quote_size
+        );
     };
 
 };

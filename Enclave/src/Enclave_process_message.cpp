@@ -292,12 +292,15 @@ out:
     query_response->type = TEEP_TYPE_QUERY_RESPONSE;
     if(query_request->data_item_requested.attestation){
         PRINT_DEBUG_LOG("[TEEP Agent] generate Generic EAT Evidence\n");
-        result = create_evidence_generic(query_request, tmp, key_pair, &eat);
+        //result = create_evidence_generic(query_request, tmp, key_pair, &eat);
+        result = create_evidence_dcap(query_request, tmp, key_pair, &eat);
+
         if (result != TEEP_SUCCESS) {
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
-        tmp = UsefulBuf_SliceTail(tmp, eat);
+
+        //tmp = UsefulBuf_SliceTail(tmp, eat);
         query_response->attestation_payload =
             (teep_buf_t){.len = eat.len,
                          .ptr = const_cast<uint8_t *>(

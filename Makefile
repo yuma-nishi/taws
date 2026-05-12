@@ -61,17 +61,19 @@ SGX_COMMON_CXXFLAGS := $(SGX_COMMON_FLAGS) -Wnon-virtual-dtor -std=c++11
 ######## App Settings ########
 ifneq ($(SGX_MODE), HW)
     Urts_Library_Name := sgx_urts_sim
+    Uae_Service_Library_Name := sgx_uae_service_sim
 else
     Urts_Library_Name := sgx_urts
+    Uae_Service_Library_Name := sgx_uae_service
 endif
 
-App_Cpp_Files := App/src/sgx_teep_session.cpp App/src/teep_http_client.cpp
+App_Cpp_Files := App/src/sgx_teep_session.cpp App/src/teep_http_client.cpp App/src/dcap_quote_ocalls.cpp
 App_Include_Paths := -IApp -IApp/inc -Icommon -I$(SGX_SDK)/include $(SYS_INC)
 
 App_C_Flags := -fPIC -Wno-attributes $(App_Include_Paths)
 
 App_Cpp_Flags := $(App_C_Flags)
-App_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread -lsgx_usgxssl -L./lib -lteep -lqcbor -lcurl $(ROOT_DIR)/third_party/wasm-micro-runtime/product-mini/platforms/linux-sgx/build/libvmlib_untrusted.a
+App_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -l$(Uae_Service_Library_Name) -lpthread -lsgx_usgxssl -lsgx_dcap_ql -L./lib -lteep -lqcbor -lcurl $(ROOT_DIR)/third_party/wasm-micro-runtime/product-mini/platforms/linux-sgx/build/libvmlib_untrusted.a
 
 
 App_Cpp_Objects := $(App_Cpp_Files:.cpp=.o)
@@ -83,7 +85,7 @@ APP_TARGET := $(if $(filter 1,$(BUILD_APP)),$(App_Name),)
 GO_BUILD_DIR := $(ROOT_DIR)/build/go
 GO_BIN := taws
 GO_LIB := $(GO_BUILD_DIR)/libattester.a
-GO_APP_CPP_OBJS := $(GO_BUILD_DIR)/sgx_teep_session.o $(GO_BUILD_DIR)/teep_http_client.o $(GO_BUILD_DIR)/attester_api.o
+GO_APP_CPP_OBJS := $(GO_BUILD_DIR)/sgx_teep_session.o $(GO_BUILD_DIR)/teep_http_client.o $(GO_BUILD_DIR)/dcap_quote_ocalls.o $(GO_BUILD_DIR)/attester_api.o
 GO_APP_C_OBJS := $(GO_BUILD_DIR)/Enclave_u.o
 
 ######## Enclave Settings ########
@@ -230,6 +232,10 @@ $(GO_BUILD_DIR)/sgx_teep_session.o: App/src/sgx_teep_session.cpp App/Enclave_u.h
 	@echo "CXX  <=  $< (go)"
 
 $(GO_BUILD_DIR)/teep_http_client.o: App/src/teep_http_client.cpp | $(GO_BUILD_DIR)
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -DATTESTER_NO_MAIN -c $< -o $@
+	@echo "CXX  <=  $< (go)"
+
+$(GO_BUILD_DIR)/dcap_quote_ocalls.o: App/src/dcap_quote_ocalls.cpp App/inc/dcap_quote_ocalls.h | $(GO_BUILD_DIR)
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -DATTESTER_NO_MAIN -c $< -o $@
 	@echo "CXX  <=  $< (go)"
 

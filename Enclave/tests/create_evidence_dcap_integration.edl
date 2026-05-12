@@ -1,0 +1,39 @@
+/*
+ * Copyright (c) 2026 SECOM CO., LTD. All Rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+enclave {
+    include "stddef.h"
+    include "stdint.h"
+    include "sgx_report.h"
+
+    from "sgx_tstdc.edl" import *;
+
+    trusted {
+        public int ecall_test_create_evidence_dcap(
+            [out, size=evidence_buf_len] uint8_t* evidence_buf,
+            size_t evidence_buf_len,
+            [out] size_t* actual_len
+        );
+    };
+
+    untrusted {
+        void ocall_print_string([in, string] const char *str);
+
+        sgx_status_t ocall_get_qe_target_info(
+            [out] sgx_target_info_t* qe_target_info
+        );
+
+        sgx_status_t ocall_get_quote_size(
+            [out] uint32_t* quote_size
+        );
+
+        sgx_status_t ocall_get_quote(
+            [in] const sgx_report_t* report,
+            [out, size=quote_size] uint8_t* quote_buf,
+            uint32_t quote_size
+        );
+    };
+};
