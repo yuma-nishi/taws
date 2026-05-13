@@ -42,5 +42,10 @@ teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
                            teep_key_t *key_pair,
                            UsefulBufC *ret);
 
+teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_request,
+                           UsefulBuf buf,
+                           teep_key_t *key_pair,
+                           UsefulBufC *ret);
+
 
 #endif /* CREATE_EVIDENCE_H */

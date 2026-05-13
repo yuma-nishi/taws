@@ -44,12 +44,14 @@ extern "C" {
 #include "ecall_process_teep_result.h"
 
 
-#define MAX_SEND_BUFFER_SIZE            1024*2
+#define MAX_SEND_BUFFER_SIZE            1024*10
 #define ERR_MSG_BUF_LEN                 32
-#define WORK_BUF_LEN                 1024
+#define WORK_BUF_LEN                    1024*10
 #define SUPPORTED_VERSION               0
 #define SUPPORTED_CIPHER_SUITES_LEN     1
 #define REPORT_SIZE (1024)
+
+#define SGX_EVIDENCE 1
 
 
 const teep_cipher_suite_t supported_teep_cipher_suites[SUPPORTED_CIPHER_SUITES_LEN] = {
@@ -64,6 +66,7 @@ static const teep_cipher_suite_t TeepCipherSuiteInvalid = {{
 static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
+static const char k_dcap_quote_attestation_payload_format[] = "application/vnd.taws.sgx-dcap-evidence+cbor";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
@@ -291,21 +294,36 @@ out:
     // Build QueryResponse and include attestation payload when requested.
     query_response->type = TEEP_TYPE_QUERY_RESPONSE;
     if(query_request->data_item_requested.attestation){
-        PRINT_DEBUG_LOG("[TEEP Agent] generate Generic EAT Evidence\n");
-        //result = create_evidence_generic(query_request, tmp, key_pair, &eat);
-        result = create_evidence_dcap(query_request, tmp, key_pair, &eat);
+        PRINT_DEBUG_LOG("[TEEP Agent] generate attestation evidence\n");
 
+        if(SGX_EVIDENCE == 1){
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: SGX DCAP\n");
+            result = create_evidence_dcap_envelope(query_request, tmp, key_pair, &eat);
+        }else{
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: generic EAT\n");
+            result = create_evidence_generic(query_request, tmp, key_pair, &eat);
+        }
         if (result != TEEP_SUCCESS) {
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence creation failed. %s(%d)\n",
+                            teep_err_to_str(result),
+                            result);
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
+        query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
 
-        //tmp = UsefulBuf_SliceTail(tmp, eat);
+        tmp = UsefulBuf_SliceTail(tmp, eat);
         query_response->attestation_payload =
             (teep_buf_t){.len = eat.len,
                          .ptr = const_cast<uint8_t *>(
                              static_cast<const uint8_t *>(eat.ptr))};
-        query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
+        if(SGX_EVIDENCE==1){
+            query_response->attestation_payload_format =
+                (teep_buf_t){ .len = sizeof(k_dcap_quote_attestation_payload_format) - 1,
+                              .ptr = reinterpret_cast<const uint8_t *>(
+                                  k_dcap_quote_attestation_payload_format) };
+            query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT;
+        }
     }
 
     if (query_request->data_item_requested.trusted_components) {

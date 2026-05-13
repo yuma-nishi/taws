@@ -57,7 +57,11 @@ enum{
     MEASUREMENTS =273,
     CONTENT_TYPE = 600,
     ID = 1,
-    ALGORITHM = 1
+    ALGORITHM = 1,
+
+    /* TAWS SGX DCAP evidence envelope */
+    TEEP_CHALLENGE = 2,
+    TAWS_DCAP_QUOTE = -70001
 };
 
 static teep_err_t teep_err_from_sgx_status(sgx_status_t status)
@@ -264,11 +268,14 @@ teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
     /* Get QE target info for an application report addressed to the quoting enclave. */
     sgx_target_info_t qe_target_info = { 0 };
     sgx_status_t ocall_ret = SGX_SUCCESS;
+    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get QE target info\n");
     sgx_ret = ocall_get_qe_target_info(&ocall_ret, &qe_target_info);
     if (sgx_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_qe_target_info bridge failed 0x%04x\n", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_target_info failed 0x%04x\n", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
 
@@ -280,34 +287,114 @@ teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
     }
 
     sgx_report_t report = {};
+    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: create report\n");
     sgx_ret = sgx_create_report(&qe_target_info, &report_data, &report);
     if (sgx_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_create_report failed 0x%04x\n", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
 
     uint32_t required_quote_size = 0;
     ocall_ret = SGX_SUCCESS;
+    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get quote size\n");
     sgx_ret = ocall_get_quote_size(&ocall_ret, &required_quote_size);
     if (sgx_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_quote_size bridge failed 0x%04x\n", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_quote_size failed 0x%04x\n", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
     if (required_quote_size == 0 || required_quote_size > buf.len) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: quote buffer too small (required=%u capacity=%zu)\n",
+                        required_quote_size,
+                        buf.len);
         return TEEP_ERR_NO_MEMORY;
     }
 
     ocall_ret = SGX_SUCCESS;
+    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get quote (%u bytes)\n", required_quote_size);
     sgx_ret = ocall_get_quote(&ocall_ret, &report, (uint8_t *)buf.ptr, required_quote_size);
     if (sgx_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_quote bridge failed 0x%04x\n", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
+        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_quote failed 0x%04x\n", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
 
     ret->ptr = buf.ptr;
     ret->len = required_quote_size;
+    return TEEP_SUCCESS;
+}
+
+teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_request,
+                                         UsefulBuf buf,
+                                         teep_key_t *key_pair,
+                                         UsefulBufC *ret)
+{
+    if (query_request == NULL || key_pair == NULL || ret == NULL ||
+        buf.ptr == NULL || buf.len == 0 ||
+        key_pair->public_key == NULL ||
+        key_pair->public_key_len != PRIME256V1_PUBLIC_KEY_LENGTH ||
+        key_pair->public_key[0] != 0x04) {
+        return TEEP_ERR_INVALID_VALUE;
+    }
+    *ret = NULLUsefulBufC;
+
+    uint8_t *quote_buf = (uint8_t *)malloc(buf.len);
+    if (quote_buf == NULL) {
+        return TEEP_ERR_NO_MEMORY;
+    }
+
+    UsefulBuf quote_storage = { .ptr = quote_buf, .len = buf.len };
+    UsefulBufC quote = NULLUsefulBufC;
+    teep_err_t result = create_evidence_dcap(query_request,
+                                             quote_storage,
+                                             key_pair,
+                                             &quote);
+    if (result != TEEP_SUCCESS) {
+        free(quote_buf);
+        return result;
+    }
+
+    QCBOREncodeContext context;
+    QCBOREncode_Init(&context, buf);
+    QCBOREncode_OpenMap(&context);
+
+    QCBOREncode_OpenMapInMapN(&context, CNF);
+    QCBOREncode_OpenMapInMapN(&context, COSE_KEY);
+    QCBOREncode_AddInt64ToMapN(&context, KEY_TYPE, 2);
+    QCBOREncode_AddInt64ToMapN(&context, CURVE, 1);
+    QCBOREncode_AddBytesToMapN(&context,
+                               X_COORDINATE,
+                               (UsefulBufC){ .ptr = key_pair->public_key + 1, .len = 32 });
+    QCBOREncode_AddBytesToMapN(&context,
+                               Y_COORDINATE,
+                               (UsefulBufC){ .ptr = key_pair->public_key + 33, .len = 32 });
+    QCBOREncode_CloseMap(&context);
+    QCBOREncode_CloseMap(&context);
+
+    if ((query_request->contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) &&
+        query_request->challenge.ptr != NULL &&
+        query_request->challenge.len > 0) {
+        QCBOREncode_AddBytesToMapN(&context,
+                                   TEEP_CHALLENGE,
+                                   (UsefulBufC){ .ptr = query_request->challenge.ptr,
+                                                 .len = query_request->challenge.len });
+    }
+
+    QCBOREncode_AddBytesToMapN(&context, TAWS_DCAP_QUOTE, quote);
+    QCBOREncode_CloseMap(&context);
+
+    QCBORError error = QCBOREncode_Finish(&context, ret);
+    free(quote_buf);
+    if (error != QCBOR_SUCCESS) {
+        PRINT_DEBUG_LOG("QCBOREncode_Finish() = %d\n", error);
+        return TEEP_ERR_UNEXPECTED_ERROR;
+    }
+
     return TEEP_SUCCESS;
 }
