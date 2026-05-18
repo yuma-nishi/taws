@@ -42,11 +42,12 @@ extern "C" {
 #include "suit_report_esp256_cose_key_private.h"
 #include "suit_config.h"
 #include "ecall_process_teep_result.h"
+#include "teep_buffer_sizes.h"
 
 
-#define MAX_SEND_BUFFER_SIZE            1024*10
+#define MAX_SEND_BUFFER_SIZE            TEEP_SEND_BUFFER_SIZE
 #define ERR_MSG_BUF_LEN                 32
-#define WORK_BUF_LEN                    1024*10
+#define WORK_BUF_LEN                    TEEP_WORK_BUFFER_SIZE
 #define SUPPORTED_VERSION               0
 #define SUPPORTED_CIPHER_SUITES_LEN     1
 #define REPORT_SIZE (1024)
@@ -310,6 +311,9 @@ out:
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
+        PRINT_DEBUG_LOG("[TEEP Agent] attestation evidence size=%zu capacity=%zu\n",
+                        eat.len,
+                        tmp.len);
         query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
 
         tmp = UsefulBuf_SliceTail(tmp, eat);
@@ -659,6 +663,11 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
 
     UsefulBuf_MAKE_STACK_UB(work_buf, WORK_BUF_LEN);
     work_buf.len = WORK_BUF_LEN; /* Caller-side stack scratch buffer to reduce malloc in subroutines. */
+    PRINT_DEBUG_LOG("[TEEP Broker] buffers: cbor_send=%zu work=%zu allocated_send=%zu recv=%zu\n",
+                    (size_t)MAX_SEND_BUFFER_SIZE,
+                    (size_t)WORK_BUF_LEN,
+                    allocated_len,
+                    recv_len);
 
     if (g_key_state != TEEP_KEY_READY) {
         PRINT_DEBUG_LOG("main : key not initialized.\n");
@@ -733,9 +742,15 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
             free_query_response_tc_list_buffers(&send_message.query_response);
         }
-        PRINT_DEBUG_LOG("main : Failed to encode query_response message. %s(%d)\n", teep_err_to_str(result), result);
+        PRINT_DEBUG_LOG("main : Failed to encode query_response message. %s(%d) capacity=%zu\n",
+                        teep_err_to_str(result),
+                        result,
+                        (size_t)MAX_SEND_BUFFER_SIZE);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
+    PRINT_DEBUG_LOG("[TEEP Broker] encoded TEEP message size=%zu capacity=%zu\n",
+                    cbor_send_buf.len,
+                    (size_t)MAX_SEND_BUFFER_SIZE);
 
     UsefulBuf cose_send_buf = (UsefulBuf){ .ptr = send_buf, .len = allocated_len };
     cose_send_buf.len = allocated_len;
@@ -745,9 +760,16 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
             free_query_response_tc_list_buffers(&send_message.query_response);
         }
-        PRINT_DEBUG_LOG("main : Failed to sign to query_response message. %s(%d)\n", teep_err_to_str(result), result);
+        PRINT_DEBUG_LOG("main : Failed to sign to query_response message. %s(%d) cbor_len=%zu allocated_len=%zu\n",
+                        teep_err_to_str(result),
+                        result,
+                        cbor_send_buf.len,
+                        allocated_len);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
+    PRINT_DEBUG_LOG("[TEEP Broker] signed COSE message size=%zu allocated_len=%zu\n",
+                    cose_send_buf.len,
+                    allocated_len);
 
     if (actual_len != NULL) {
         *actual_len = cose_send_buf.len;

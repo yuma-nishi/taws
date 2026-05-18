@@ -61,7 +61,7 @@ enum{
 
     /* TAWS SGX DCAP evidence envelope */
     TEEP_CHALLENGE = 2,
-    TAWS_DCAP_QUOTE = -70001
+    TAWS_DCAP_QUOTE = -70000
 };
 
 static teep_err_t teep_err_from_sgx_status(sgx_status_t status)

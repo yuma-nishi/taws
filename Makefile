@@ -224,10 +224,12 @@ App/%.o: App/%.cpp App/Enclave_u.h
 	$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
+App/src/sgx_teep_session.o: common/teep_buffer_sizes.h
+
 $(GO_BUILD_DIR):
 	@mkdir -p $(GO_BUILD_DIR)
 
-$(GO_BUILD_DIR)/sgx_teep_session.o: App/src/sgx_teep_session.cpp App/Enclave_u.h | $(GO_BUILD_DIR)
+$(GO_BUILD_DIR)/sgx_teep_session.o: App/src/sgx_teep_session.cpp App/Enclave_u.h common/teep_buffer_sizes.h | $(GO_BUILD_DIR)
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -DATTESTER_NO_MAIN -c $< -o $@
 	@echo "CXX  <=  $< (go)"
 
@@ -285,6 +287,7 @@ Enclave/%.o: Enclave/%.cpp
 	@echo "CXX  <=  $<"
 
 $(Enclave_Cpp_Objects): Enclave/Enclave_t.h
+Enclave/src/Enclave_process_message.o: common/teep_buffer_sizes.h
 
 $(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
 	$(CXX) $^ -o $@ $(Enclave_Link_Flags) 
