@@ -20,3 +20,6 @@
 [submodule "third_party/intel-dcap-pccs"]
 	path = third_party/intel-dcap-pccs
 	url = https://github.com/intel/confidential-computing.tee.dcap.pccs
+[submodule "third_party/intel-dcap"]
+	path = third_party/intel-dcap
+	url = https://github.com/intel/confidential-computing.tee.dcap.git
