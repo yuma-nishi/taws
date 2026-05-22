@@ -110,11 +110,11 @@ For Web Server usage (with diagram), CLI usage details, and full options, see [U
 
 If you need a simulation-only development build, use `make SGX_MODE=SIM` instead. SGX DCAP evidence and PCCS are hardware-mode requirements.
 
-### Build and Run with Docker for Simulation
+### Build and Run with Docker for SGX HW/DCAP
 
 #### Prepare SGX Base Image
 
-This optional simulation-only workflow prepares the SGX SDK base image from [confidential-computing.sgx](https://github.com/intel/confidential-computing.sgx), which is used by the TAWS Docker build.
+This workflow expects the `sgx_sample_deb` base image to be available locally. The image should provide the Intel SGX SDK and PSW Debian packages required by Intel DCAP QuoteGeneration packages.
 
 ```bash
 cd scripts/
@@ -123,17 +123,46 @@ cd scripts/
 
 #### Build and Run TAWS in Docker
 
-This step builds the `taws` image and runs the TAWS web server in SGX simulation mode.
+The Docker build compiles Intel DCAP QuoteGeneration Debian packages from `third_party/intel-dcap/QuoteGeneration`, installs those packages inside the same image, builds TAWS with `SGX_MODE=HW`, and bundles PCCS for local quote provider use. It does not create DCAP build outputs on the native host outside Docker image/cache state.
 
 ```bash
+git submodule update --init --recursive
 docker build -t taws .
+```
 
-# run taws web ui
+Run AESM and TAWS together on an SGX hardware host with Docker Compose. AESM writes its socket to the `aesmd-socket` Docker volume, and TAWS mounts the same volume at `/var/run/aesmd`. PCCS listens only on `127.0.0.1:8081` inside the TAWS container; only the TAWS web port is published.
+
+```bash
+PCCS_API_KEY=your-intel-pcs-api-key docker compose up
+```
+
+If your SGX driver exposes devices under `/dev/sgx/`, override the default device paths:
+
+```bash
+SGX_ENCLAVE_DEVICE=/dev/sgx/enclave \
+SGX_PROVISION_DEVICE=/dev/sgx/provision \
+PCCS_API_KEY=your-intel-pcs-api-key \
+docker compose up
+```
+
+If AESM is already running on the host, you can run only the TAWS container and bind-mount the host AESM socket instead:
+
+```bash
 docker run --rm -p 8181:8181 \
+  --device /dev/sgx_enclave \
+  -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket \
+  -e PCCS_API_KEY=your-intel-pcs-api-key \
   -e TAWS_WEB_ADDR=0.0.0.0:8181 \
   -e TAWS_TAM_URL=http://127.0.0.1:8080/tam \
   taws
 ```
+
+Optional PCCS runtime environment variables:
+
+- `PCCS_PROXY`: proxy URL used by PCCS to reach Intel PCS.
+- `PCCS_CACHING_MODE`: PCCS caching fill mode. Defaults to `LAZY`; `REQ` and `OFFLINE` are also supported by PCCS.
+
+The `start_pccs.sh` container entrypoint generates a self-signed PCCS TLS certificate if one is not already present, writes `/etc/sgx_default_qcnl.conf` for `https://localhost:8081/sgx/certification/v4/` with `use_secure_cert=false`, starts PCCS in the background, and waits for HTTPS port `8081` to listen locally. The Dockerfile `CMD` then runs `taws web` in the foreground.
 
 
 ## Design Documents
