@@ -20,6 +20,7 @@ services:
       - "${TAWS_WEB_PORT:-8181}:8181"
     devices:
       - "${SGX_ENCLAVE_DEVICE:-/dev/sgx_enclave}:${SGX_ENCLAVE_DEVICE:-/dev/sgx_enclave}"
+      - "${SGX_PROVISION_DEVICE:-/dev/sgx_provision}:${SGX_PROVISION_DEVICE:-/dev/sgx_provision}"
     volumes:
       - aesmd-socket:/var/run/aesmd
     environment:

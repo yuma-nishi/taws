@@ -5,6 +5,8 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,36 +77,43 @@ static teep_err_t create_dcap_report_data(const teep_query_request_t *query_requ
 {
     sgx_status_t sgx_ret = SGX_SUCCESS;
     sgx_sha_state_handle_t sha_handle = NULL;
-    sgx_sha256_hash_t digest = {0};
+    sgx_sha384_hash_t digest = {0};
 
     if (query_request == NULL || key_pair == NULL || key_pair->public_key == NULL ||
-        key_pair->public_key_len == 0 || report_data == NULL) {
+        key_pair->public_key_len != PRIME256V1_PUBLIC_KEY_LENGTH ||
+        key_pair->public_key[0] != 0x04 ||
+        report_data == NULL) {
         return TEEP_ERR_INVALID_VALUE;
     }
 
     memset(report_data, 0, sizeof(*report_data));
 
-    sgx_ret = sgx_sha256_init(&sha_handle);
+    sgx_ret = sgx_sha384_init(&sha_handle);
     if (sgx_ret != SGX_SUCCESS) {
         return teep_err_from_sgx_status(sgx_ret);
     }
 
-    sgx_ret = sgx_sha256_update(key_pair->public_key,
-                                (uint32_t)key_pair->public_key_len,
+    sgx_ret = sgx_sha384_update(key_pair->public_key + 1,
+                                32,
                                 sha_handle);
+    if (sgx_ret == SGX_SUCCESS) {
+        sgx_ret = sgx_sha384_update(key_pair->public_key + 33,
+                                    32,
+                                    sha_handle);
+    }
     if (sgx_ret == SGX_SUCCESS &&
         (query_request->contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) &&
         query_request->challenge.ptr != NULL &&
         query_request->challenge.len > 0) {
-        sgx_ret = sgx_sha256_update((const uint8_t *)query_request->challenge.ptr,
+        sgx_ret = sgx_sha384_update((const uint8_t *)query_request->challenge.ptr,
                                     (uint32_t)query_request->challenge.len,
                                     sha_handle);
     }
     if (sgx_ret == SGX_SUCCESS) {
-        sgx_ret = sgx_sha256_get_hash(sha_handle, &digest);
+        sgx_ret = sgx_sha384_get_hash(sha_handle, &digest);
     }
 
-    sgx_status_t close_ret = sgx_sha256_close(sha_handle);
+    sgx_status_t close_ret = sgx_sha384_close(sha_handle);
     if (sgx_ret != SGX_SUCCESS) {
         return teep_err_from_sgx_status(sgx_ret);
     }
@@ -344,6 +353,14 @@ teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_reque
     }
     *ret = NULLUsefulBufC;
 
+    size_t challenge_len = 0;
+    if (query_request->contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) {
+        if (query_request->challenge.len > 0 && query_request->challenge.ptr == NULL) {
+            return TEEP_ERR_INVALID_VALUE;
+        }
+        challenge_len = query_request->challenge.len;
+    }
+
     uint8_t *quote_buf = (uint8_t *)malloc(buf.len);
     if (quote_buf == NULL) {
         return TEEP_ERR_NO_MEMORY;
@@ -360,36 +377,63 @@ teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_reque
         return result;
     }
 
-    QCBOREncodeContext context;
-    QCBOREncode_Init(&context, buf);
-    QCBOREncode_OpenMap(&context);
+    size_t raw_report_data_len = 64 + challenge_len;
+    uint8_t *raw_report_data_buf = (uint8_t *)malloc(raw_report_data_len);
+    if (raw_report_data_buf == NULL) {
+        free(quote_buf);
+        return TEEP_ERR_NO_MEMORY;
+    }
+    memcpy(raw_report_data_buf, key_pair->public_key + 1, 32);
+    memcpy(raw_report_data_buf + 32, key_pair->public_key + 33, 32);
+    if (challenge_len > 0) {
+        memcpy(raw_report_data_buf + 64, query_request->challenge.ptr, challenge_len);
+    }
+    UsefulBufC raw_report_data = { .ptr = raw_report_data_buf, .len = raw_report_data_len };
 
-    QCBOREncode_OpenMapInMapN(&context, CNF);
-    QCBOREncode_OpenMapInMapN(&context, COSE_KEY);
-    QCBOREncode_AddInt64ToMapN(&context, KEY_TYPE, 2);
-    QCBOREncode_AddInt64ToMapN(&context, CURVE, 1);
-    QCBOREncode_AddBytesToMapN(&context,
-                               X_COORDINATE,
-                               (UsefulBufC){ .ptr = key_pair->public_key + 1, .len = 32 });
-    QCBOREncode_AddBytesToMapN(&context,
-                               Y_COORDINATE,
-                               (UsefulBufC){ .ptr = key_pair->public_key + 33, .len = 32 });
-    QCBOREncode_CloseMap(&context);
-    QCBOREncode_CloseMap(&context);
-
-    if ((query_request->contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) &&
-        query_request->challenge.ptr != NULL &&
-        query_request->challenge.len > 0) {
-        QCBOREncode_AddBytesToMapN(&context,
-                                   TEEP_CHALLENGE,
-                                   (UsefulBufC){ .ptr = query_request->challenge.ptr,
-                                                 .len = query_request->challenge.len });
+    //attestation-payload: << [ raw-dcap-quote3, raw-report-data: << x || y || nonce >> ] >>
+    size_t encoded_report_data_len = 0;
+    QCBOREncodeContext report_data_size_context;
+    QCBOREncode_Init(&report_data_size_context, SizeCalculateUsefulBuf);
+    QCBOREncode_AddBytes(&report_data_size_context, raw_report_data);
+    if (QCBOREncode_FinishGetSize(&report_data_size_context, &encoded_report_data_len) != QCBOR_SUCCESS ||
+        encoded_report_data_len == 0) {
+        free(raw_report_data_buf);
+        free(quote_buf);
+        return TEEP_ERR_UNEXPECTED_ERROR;
     }
 
-    QCBOREncode_AddBytesToMapN(&context, TAWS_DCAP_QUOTE, quote);
-    QCBOREncode_CloseMap(&context);
+    uint8_t *encoded_report_data_buf = (uint8_t *)malloc(encoded_report_data_len);
+    if (encoded_report_data_buf == NULL) {
+        free(raw_report_data_buf);
+        free(quote_buf);
+        return TEEP_ERR_NO_MEMORY;
+    }
 
-    QCBORError error = QCBOREncode_Finish(&context, ret);
+    QCBOREncodeContext report_data_context;
+    UsefulBufC encoded_report_data = NULLUsefulBufC;
+    QCBOREncode_Init(&report_data_context,
+                     (UsefulBuf){ .ptr = encoded_report_data_buf,
+                                  .len = encoded_report_data_len });
+    QCBOREncode_AddBytes(&report_data_context, raw_report_data);
+    QCBORError error = QCBOREncode_Finish(&report_data_context, &encoded_report_data);
+    if (error != QCBOR_SUCCESS) {
+        PRINT_DEBUG_LOG("QCBOREncode_Finish() = %d\n", error);
+        free(encoded_report_data_buf);
+        free(raw_report_data_buf);
+        free(quote_buf);
+        return TEEP_ERR_UNEXPECTED_ERROR;
+    }
+
+    QCBOREncodeContext context;
+    QCBOREncode_Init(&context, buf);
+    QCBOREncode_OpenArray(&context);
+    QCBOREncode_AddBytes(&context, quote);
+    QCBOREncode_AddBytes(&context, encoded_report_data);
+    QCBOREncode_CloseArray(&context);
+
+    error = QCBOREncode_Finish(&context, ret);
+    free(encoded_report_data_buf);
+    free(raw_report_data_buf);
     free(quote_buf);
     if (error != QCBOR_SUCCESS) {
         PRINT_DEBUG_LOG("QCBOREncode_Finish() = %d\n", error);

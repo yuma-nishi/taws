@@ -67,7 +67,7 @@ static const teep_cipher_suite_t TeepCipherSuiteInvalid = {{
 static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
-static const char k_dcap_quote_attestation_payload_format[] = "application/vnd.taws.sgx-dcap-evidence+cbor";
+static const char k_dcap_quote_attestation_payload_format[] = "application/sgx-quote3-teep-bundle";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
@@ -143,10 +143,6 @@ static int build_tc_info_cbor_from_tc_list_item(const tc_list_item_t *item, teep
     out_tc_info->len = encoded_tc_info.len;
     return 0;
 }
-
-
-
-
 
 /*!
     \brief      Create teep-error message.
@@ -314,9 +310,13 @@ out:
         PRINT_DEBUG_LOG("[TEEP Agent] attestation evidence size=%zu capacity=%zu\n",
                         eat.len,
                         tmp.len);
+        tmp = UsefulBuf_SliceTail(tmp, eat);
+        if (tmp.ptr == NULL) {
+            err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
+            goto error;
+        }
         query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
 
-        tmp = UsefulBuf_SliceTail(tmp, eat);
         query_response->attestation_payload =
             (teep_buf_t){.len = eat.len,
                          .ptr = const_cast<uint8_t *>(
