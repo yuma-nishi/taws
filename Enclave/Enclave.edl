@@ -25,8 +25,8 @@ enclave {
     
     trusted {
     /* Enclave_generate_keypair.cpp */
-        public int ecall_teep_generate_es256_key_pair();
-        public int ecall_teep_set_es256_key();
+        public int ecall_teep_generate_esp256_key_pair();
+        public int ecall_teep_set_esp256_key();
         public void ecall_teep_free_keypair();
 
 

@@ -56,7 +56,7 @@ extern "C" {
 
 
 const teep_cipher_suite_t supported_teep_cipher_suites[SUPPORTED_CIPHER_SUITES_LEN] = {
-    { { { CBOR_TAG_COSE_SIGN1, T_COSE_ALGORITHM_ES256 }, { 0, 0 } } }
+    { { { CBOR_TAG_COSE_SIGN1, T_COSE_ALGORITHM_ESP256 }, { 0, 0 } } }
 };
 
 static const teep_cipher_suite_t TeepCipherSuiteInvalid = {{
@@ -285,8 +285,9 @@ out:
         query_response->contains |= TEEP_MESSAGE_CONTAINS_TOKEN;
     }
 
+    (void)cipher_suite;
     query_response->selected_version = version;
-    query_response->selected_teep_cipher_suite = cipher_suite;
+    query_response->contains |= TEEP_MESSAGE_CONTAINS_SELECTED_VERSION;
 
     // Build QueryResponse and include attestation payload when requested.
     query_response->type = TEEP_TYPE_QUERY_RESPONSE;

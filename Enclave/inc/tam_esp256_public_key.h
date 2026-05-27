@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#ifndef TAM_PUBLIC_KEY_H
-#define TAM_PUBLIC_KEY_H
+#ifndef TAM_ESP256_PUBLIC_KEY_H
+#define TAM_ESP256_PUBLIC_KEY_H
 
-const unsigned char tam_es256_public_key[] = {
+const unsigned char tam_esp256_public_key[] = {
     0x04 /* POINT_CONVERSION_UNCOMPRESSED */,
     0x0e, 0x90, 0x8a, 0xa8, 0xf0, 0x66, 0xdb, 0x1f,
     0x08, 0x4e, 0x0c, 0x36, 0x52, 0xc6, 0x39, 0x52,
@@ -19,4 +19,4 @@ const unsigned char tam_es256_public_key[] = {
     0x31, 0x4b, 0x27, 0x49, 0xee, 0x42, 0xd2, 0x9a
 };
 
-#endif /* TAM_PUBLIC_KEY_H */
+#endif /* TAM_ESP256_PUBLIC_KEY_H */

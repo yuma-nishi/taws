@@ -51,18 +51,6 @@ teep_err_t create_evidence_generic(const teep_query_request_t *query_request,
     return TEEP_ERR_UNEXPECTED_ERROR;
 }
 
-teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
-                                UsefulBuf buf,
-                                teep_key_t *key_pair,
-                                UsefulBufC *ret)
-{
-    (void)query_request;
-    (void)buf;
-    (void)key_pair;
-    (void)ret;
-    return TEEP_ERR_UNEXPECTED_ERROR;
-}
-
 teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_request,
                                          UsefulBuf buf,
                                          teep_key_t *key_pair,

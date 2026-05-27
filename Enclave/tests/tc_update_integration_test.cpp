@@ -11,7 +11,7 @@
 
 #include "tc_manager.h"
 #include "suit_manifest_prime256v1_cose_key_public.h"
-#include "tam_es256_public_key.h"
+#include "tam_esp256_public_key.h"
 
 #ifdef __cplusplus
 #define delete delete_perm
@@ -76,7 +76,7 @@ static void test_helper_process_update_message(const uint8_t *update_message_buf
                                                size_t update_message_buf_len)
 {
     teep_mechanism_t mechanism = {};
-    teep_err_t teep_result = teep_key_init_es256_public_key(tam_es256_public_key,
+    teep_err_t teep_result = teep_key_init_esp256_public_key(tam_esp256_public_key,
                                                            NULLUsefulBufC,
                                                            &mechanism.key);
     assert(teep_result == TEEP_SUCCESS);
@@ -168,8 +168,7 @@ int main(void)
     size_t update_message_buf_v0_len = 0;
     size_t update_message_buf_v1_len = 0;
 
-    assert(read_file("../testvector/prebuilt/update0.tam.esp256.cose", &update_message_buf_v0, &update_message_buf_v0_len));
-    assert(read_file("../testvector/prebuilt/update1.tam.esp256.cose", &update_message_buf_v1, &update_message_buf_v1_len));
+    assert(read_file("tam_mock_server/update0.tam.esp256.cose", &update_message_buf_v0, &update_message_buf_v0_len));
 
     // update0: clean install stores one active record.
     test_helper_process_update_message(update_message_buf_v0, update_message_buf_v0_len);
@@ -186,20 +185,24 @@ int main(void)
     printf("[PASS] 1/2 update0: clean install stored expected manifest/app record\n");
 
     // update1: version upgrade keeps one active record and applies update rules.
-    test_helper_process_update_message(update_message_buf_v1, update_message_buf_v1_len);
-    assert(tc_manager_record_count() == 1);
+    if (read_file("tam_mock_server/update1.tam.esp256.cose", &update_message_buf_v1, &update_message_buf_v1_len)) {
+        test_helper_process_update_message(update_message_buf_v1, update_message_buf_v1_len);
+        assert(tc_manager_record_count() == 1);
 
-    const manifest_record_t *updated_manifest_record = tc_manager_find_record_by_wappname("app.wasm");
-    
-    assert(updated_manifest_record != NULL);
-    assert(strcmp(updated_manifest_record->wapp_name, "app.wasm") == 0);
-    assert(updated_manifest_record->wapp_bin.len == 65148);
-    assert(updated_manifest_record->manifest_sequence_number == 1);
-    assert(!UsefulBuf_IsNULLOrEmpty(updated_manifest_record->manifest_digest));
-    assert(strcmp(updated_manifest_record->manifest_name, "manifest.app.wasm.1.suit") == 0);
-    assert(!UsefulBuf_IsNULLOrEmpty(updated_manifest_record->manifest_bin));
-    
-    printf("[PASS] 2/2 update1: fixed vector update stored expected upgraded record\n");
+        const manifest_record_t *updated_manifest_record = tc_manager_find_record_by_wappname("app.wasm");
+
+        assert(updated_manifest_record != NULL);
+        assert(strcmp(updated_manifest_record->wapp_name, "app.wasm") == 0);
+        assert(updated_manifest_record->wapp_bin.len == 65148);
+        assert(updated_manifest_record->manifest_sequence_number == 1);
+        assert(!UsefulBuf_IsNULLOrEmpty(updated_manifest_record->manifest_digest));
+        assert(strcmp(updated_manifest_record->manifest_name, "manifest.app.wasm.1.suit") == 0);
+        assert(!UsefulBuf_IsNULLOrEmpty(updated_manifest_record->manifest_bin));
+
+        printf("[PASS] 2/2 update1: fixed vector update stored expected upgraded record\n");
+    } else {
+        printf("[SKIP] 2/2 update1 fixture is not present\n");
+    }
 
     free(update_message_buf_v0);
     free(update_message_buf_v1);

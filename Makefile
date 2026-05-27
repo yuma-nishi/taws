@@ -210,7 +210,7 @@ endif
 
 ######## App Objects ########
 
-App/Enclave_u.h: $(SGX_EDGER8R) 
+App/Enclave_u.h: $(SGX_EDGER8R) Enclave/Enclave.edl
 	@cd App && $(SGX_EDGER8R) --untrusted ../Enclave/Enclave.edl --search-path ../Enclave --search-path $(ROOT_DIR)/common --search-path $(SGX_SDK)/include $(SGXSSL_EDL_PATHS) --search-path $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/platform/linux-sgx
 	@echo "GEN  =>  $@"
 

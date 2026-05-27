@@ -23,7 +23,7 @@ do
     esac
 done
 
-QUERY_REQUEST_FILE="${DIR}/query_request_cose.cbor"
+QUERY_REQUEST_FILE="${DIR}/query_request.tam.esp256.cose"
 UPDATE_FILE="${DIR}/update0.tam.esp256.cose"
 
 function send_teep_cbor {

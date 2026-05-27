@@ -21,7 +21,7 @@ extern "C" {
 #include "teep_create_evidence.h"
 #include "Enclave.h"
 #include "debug_print.h"
-#include "attester_es256_key.h"
+#include "attester_esp256_key.h"
 
 #include "sgx_error.h"
 #include "sgx_report.h"
@@ -140,13 +140,13 @@ teep_err_t create_evidence_generic(const teep_query_request_t *query_request,
     /* Initialize for signing */
     teep_err_t          result;
     teep_mechanism_t mechanism_sign;
-    result = teep_key_init_es256_key_pair(attester_es256_private_key, attester_es256_public_key, NULLUsefulBufC, &mechanism_sign.key);
+    result = teep_key_init_esp256_key_pair(attester_esp256_private_key, attester_esp256_public_key, NULLUsefulBufC, &mechanism_sign.key);
     if (result != TEEP_SUCCESS) {
         PRINT_DEBUG_LOG("main : Failed to create t_cose key pair. %s(%d)\n", teep_err_to_str(result), result);
         return result;
     }
 
-    t_cose_sign1_sign_init(&sign_ctx, 0, T_COSE_ALGORITHM_ES256);
+    t_cose_sign1_sign_init(&sign_ctx, 0, T_COSE_ALGORITHM_ESP256);
     t_cose_sign1_set_signing_key(&sign_ctx, mechanism_sign.key.cose_key, mechanism_sign.key.kid);
     
     /* encode the header */
@@ -390,49 +390,15 @@ teep_err_t create_evidence_dcap_envelope(const teep_query_request_t *query_reque
     }
     UsefulBufC raw_report_data = { .ptr = raw_report_data_buf, .len = raw_report_data_len };
 
-    //attestation-payload: << [ raw-dcap-quote3, raw-report-data: << x || y || nonce >> ] >>
-    size_t encoded_report_data_len = 0;
-    QCBOREncodeContext report_data_size_context;
-    QCBOREncode_Init(&report_data_size_context, SizeCalculateUsefulBuf);
-    QCBOREncode_AddBytes(&report_data_size_context, raw_report_data);
-    if (QCBOREncode_FinishGetSize(&report_data_size_context, &encoded_report_data_len) != QCBOR_SUCCESS ||
-        encoded_report_data_len == 0) {
-        free(raw_report_data_buf);
-        free(quote_buf);
-        return TEEP_ERR_UNEXPECTED_ERROR;
-    }
-
-    uint8_t *encoded_report_data_buf = (uint8_t *)malloc(encoded_report_data_len);
-    if (encoded_report_data_buf == NULL) {
-        free(raw_report_data_buf);
-        free(quote_buf);
-        return TEEP_ERR_NO_MEMORY;
-    }
-
-    QCBOREncodeContext report_data_context;
-    UsefulBufC encoded_report_data = NULLUsefulBufC;
-    QCBOREncode_Init(&report_data_context,
-                     (UsefulBuf){ .ptr = encoded_report_data_buf,
-                                  .len = encoded_report_data_len });
-    QCBOREncode_AddBytes(&report_data_context, raw_report_data);
-    QCBORError error = QCBOREncode_Finish(&report_data_context, &encoded_report_data);
-    if (error != QCBOR_SUCCESS) {
-        PRINT_DEBUG_LOG("QCBOREncode_Finish() = %d\n", error);
-        free(encoded_report_data_buf);
-        free(raw_report_data_buf);
-        free(quote_buf);
-        return TEEP_ERR_UNEXPECTED_ERROR;
-    }
-
+    //attestation-payload: << [ raw-dcap-quote3, raw-report-data: x || y || nonce ] >>
     QCBOREncodeContext context;
     QCBOREncode_Init(&context, buf);
     QCBOREncode_OpenArray(&context);
     QCBOREncode_AddBytes(&context, quote);
-    QCBOREncode_AddBytes(&context, encoded_report_data);
+    QCBOREncode_AddBytes(&context, raw_report_data);
     QCBOREncode_CloseArray(&context);
 
-    error = QCBOREncode_Finish(&context, ret);
-    free(encoded_report_data_buf);
+    QCBORError error = QCBOREncode_Finish(&context, ret);
     free(raw_report_data_buf);
     free(quote_buf);
     if (error != QCBOR_SUCCESS) {

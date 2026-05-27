@@ -83,7 +83,7 @@ flowchart LR
       EWASM([Enclave_wasm.cpp])
       Evidence([Enclave_generate_evidence.cpp])
       AgentKey([Enclave_generate_keypair.cpp])
-      AttesterKey[(attester_es256_key.h)]
+      AttesterKey[(attester_esp256_key.h)]
       SuitKey[(suit_manifest_prime256v1_cose_key_public.h)]
 
     end
