@@ -52,7 +52,13 @@ extern "C" {
 #define SUPPORTED_CIPHER_SUITES_LEN     1
 #define REPORT_SIZE (1024)
 
-#define SGX_EVIDENCE 1
+#ifndef SGX_EVIDENCE
+#define SGX_EVIDENCE (1)
+#endif
+
+#if SGX_EVIDENCE != 0 && SGX_EVIDENCE != 1
+#error "SGX_EVIDENCE must be 0 or 1"
+#endif
 
 
 const teep_cipher_suite_t supported_teep_cipher_suites[SUPPORTED_CIPHER_SUITES_LEN] = {

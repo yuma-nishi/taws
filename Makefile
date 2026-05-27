@@ -26,6 +26,7 @@ SGX_SDK ?= /opt/intel/sgxsdk
 SGX_MODE ?= HW
 SGX_ARCH ?= x64
 SGX_DEBUG ?= 0
+SGX_EVIDENCE ?= 1
 
 ifeq ($(shell getconf LONG_BIT), 32)
     SGX_ARCH := x86
@@ -124,7 +125,7 @@ Enclave_Include_Paths := -IEnclave -IEnclave/inc -Icommon -I$(SGX_SDK)/include -
 						$(WAMR_SYS_INC)
 						 
 
-Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf $(Enclave_Include_Paths)
+Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf -DSGX_EVIDENCE=$(SGX_EVIDENCE) $(Enclave_Include_Paths)
 Enclave_Cpp_Flags := $(Enclave_C_Flags) -nostdinc++
 # Enable the security flags
 Enclave_Security_Link_Flags := -Wl,-z,relro,-z,now,-z,noexecstack
@@ -170,9 +171,10 @@ else
 endif
 endif
 
+Config_Stamp := .config_$(Build_Mode)_$(SGX_ARCH)_SGX_EVIDENCE$(SGX_EVIDENCE)
 
 .PHONY: all run target go-front run-go run-web
-all: .config_$(Build_Mode)_$(SGX_ARCH)
+all: $(Config_Stamp)
 	@$(MAKE) target
 
 ifeq ($(Build_Mode), HW_RELEASE)
@@ -204,9 +206,9 @@ ifneq ($(APP_TARGET),)
 endif
 endif
 
-.config_$(Build_Mode)_$(SGX_ARCH):
+$(Config_Stamp):
 	@rm -f .config_* $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.*
-	@touch .config_$(Build_Mode)_$(SGX_ARCH)
+	@touch $(Config_Stamp)
 
 ######## App Objects ########
 

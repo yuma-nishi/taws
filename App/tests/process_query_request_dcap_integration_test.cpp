@@ -35,6 +35,14 @@ extern "C" {
 #define QUERY_REQUEST_COSE_FILENAME "tam_mock_server/query_request.tam.esp256.cose"
 #endif
 
+#ifndef SGX_EVIDENCE
+#define SGX_EVIDENCE (1)
+#endif
+
+#if SGX_EVIDENCE != 0 && SGX_EVIDENCE != 1
+#error "SGX_EVIDENCE must be 0 or 1"
+#endif
+
 static bool require_dcap(void)
 {
     const char *value = getenv("REQUIRE_DCAP");
@@ -146,14 +154,16 @@ static void decode_query_request_challenge(const uint8_t *cose,
 static void verify_attestation_payload(const teep_query_response_t *query_response,
                                        const teep_buf_t *challenge)
 {
-    const char expected_format[] = "application/sgx-quote3-teep-bundle";
     assert((query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD) != 0);
+    assert(query_response->attestation_payload.len > 0);
+
+#if SGX_EVIDENCE == 1
+    const char expected_format[] = "application/sgx-quote3-teep-bundle";
     assert((query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT) != 0);
     assert(query_response->attestation_payload_format.len == strlen(expected_format));
     assert(memcmp(query_response->attestation_payload_format.ptr,
                   expected_format,
                   strlen(expected_format)) == 0);
-    assert(query_response->attestation_payload.len > 0);
 
     UsefulBufC encoded_payload = {
         .ptr = query_response->attestation_payload.ptr,
@@ -184,6 +194,17 @@ static void verify_attestation_payload(const teep_query_response_t *query_respon
         assert(memcmp(report_data + 64, challenge->ptr, challenge->len) == 0);
     }
     assert(QCBORDecode_Finish(&decode_context) == QCBOR_SUCCESS);
+#else
+    assert((query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT) == 0);
+
+    const uint8_t *payload = query_response->attestation_payload.ptr;
+    size_t payload_len = query_response->attestation_payload.len;
+    assert(contains_nonzero_byte(payload, payload_len));
+    assert(payload_len > 0);
+    assert(payload[0] != 0x82);
+    assert_cose_sign1_alg_esp256(payload, payload_len);
+    (void)challenge;
+#endif
 }
 
 static size_t verify_generated_query_response(const uint8_t *response_cose,
@@ -277,12 +298,20 @@ int main(void)
         return 1;
     }
     if (process_retval != ECALL_PROCESS_TEEP_RESULT_DEVICE_ACTIVATION_FLOW) {
+#if SGX_EVIDENCE == 1
         fprintf(stderr,
                 "[SKIP] ecall_process_message returned %d. "
                 "DCAP quote provider may not be available in this environment.\n",
                 process_retval);
         free(query_request_cose);
         return require_dcap() ? 1 : 0;
+#else
+        fprintf(stderr,
+                "[FAIL] ecall_process_message returned %d\n",
+                process_retval);
+        free(query_request_cose);
+        return 1;
+#endif
     }
     assert(response_cose_len > 0);
     printf("[PASS] 1/2 ecall_process_message generated QueryResponse; cose_size=%zu\n",
@@ -293,7 +322,12 @@ int main(void)
                                                                      &challenge);
     free(query_request_cose);
 
-    printf("[PASS] 2/2 verified generated ESP256-signed DCAP QueryResponse; payload_size=%zu\n",
+    printf("[PASS] 2/2 verified generated ESP256-signed %s QueryResponse; payload_size=%zu\n",
+#if SGX_EVIDENCE == 1
+           "DCAP",
+#else
+           "generic EAT",
+#endif
            attestation_payload_len);
     return 0;
 }

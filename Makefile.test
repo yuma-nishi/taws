@@ -13,6 +13,7 @@ SGX_SDK ?= /opt/intel/sgxsdk
 SGX_MODE ?= HW
 SGX_ARCH ?= x64
 SGX_DEBUG ?= 1
+SGX_EVIDENCE ?= 1
 
 ifeq ($(shell getconf LONG_BIT), 32)
     SGX_ARCH := x86
@@ -63,7 +64,7 @@ ENCLAVE_WASM_INVOKE_TEST_BIN := $(ROOT_DIR)/build/enclave_wasm_invoke_test
 TC_UPDATE_INTEGRATION_TEST_BIN := $(ROOT_DIR)/build/tc_update_integration_test
 TC_MANAGER_GET_TC_LIST_TEST_BIN := $(ROOT_DIR)/build/tc_manager_get_tc_list_test
 DCAP_QUOTE_OCALLS_TEST_BIN := $(ROOT_DIR)/build/dcap_quote_ocalls_test
-PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN := $(ROOT_DIR)/build/process_query_request_dcap_integration/process_query_request_dcap_integration_test
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN := $(ROOT_DIR)/build/process_query_request_dcap_integration_sgx_evidence$(SGX_EVIDENCE)/process_query_request_dcap_integration_test
 
 .PHONY: all manifest-record-store-test suit-condition-callback-test enclave-wasm-invoke-test tc-update-integration-test tc-manager-get-tc-list-test dcap-quote-ocalls-test process-query-request-dcap-integration-test clean run
 
@@ -73,7 +74,7 @@ all: $(MANIFEST_RECORD_TEST_BIN) $(SUIT_CONDITION_CALLBACK_TEST_BIN) $(ENCLAVE_W
 clean:
 	$(RM) $(MANIFEST_RECORD_TEST_BIN) $(SUIT_CONDITION_CALLBACK_TEST_BIN) $(ENCLAVE_WASM_INVOKE_TEST_BIN) $(TC_UPDATE_INTEGRATION_TEST_BIN) $(TC_MANAGER_GET_TC_LIST_TEST_BIN) $(DCAP_QUOTE_OCALLS_TEST_BIN)
 	$(RM) -r $(ROOT_DIR)/build/create_evidence_dcap_integration
-	$(RM) -r $(ROOT_DIR)/build/process_query_request_dcap_integration
+	$(RM) -r $(ROOT_DIR)/build/process_query_request_dcap_integration*
 
 run: manifest-record-store-test suit-condition-callback-test enclave-wasm-invoke-test tc-update-integration-test tc-manager-get-tc-list-test
 
@@ -288,7 +289,7 @@ endif
 
 .PHONY: process-query-request-dcap-integration-test
 
-PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR := $(ROOT_DIR)/build/process_query_request_dcap_integration
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR := $(ROOT_DIR)/build/process_query_request_dcap_integration_sgx_evidence$(SGX_EVIDENCE)
 PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL := Enclave/Enclave.edl
 PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_C := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_u.c
 PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_u.h
@@ -341,7 +342,7 @@ PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_INC := \
 
 PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_C_FLAGS := \
 	-nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf \
-	-ffunction-sections -fdata-sections \
+	-ffunction-sections -fdata-sections -DSGX_EVIDENCE=$(SGX_EVIDENCE) \
 	$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_INC)
 
 PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS := \
@@ -387,7 +388,7 @@ $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_O): $(PROCESS_QUERY_REQUEST_DCAP_INTE
 	@echo "CC   <=  $<"
 
 $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_HOST_O): App/tests/process_query_request_dcap_integration_test.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H)
-	$(CXX) $(SGX_COMMON_CXXFLAGS) -fPIC -Wno-attributes $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC) -DTEST_ENCLAVE_FILENAME=\"$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE)\" -DQUERY_REQUEST_COSE_FILENAME=\"$(ROOT_DIR)/tam_mock_server/query_request.tam.esp256.cose\" -c $< -o $@
+	$(CXX) $(SGX_COMMON_CXXFLAGS) -fPIC -Wno-attributes $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC) -DSGX_EVIDENCE=$(SGX_EVIDENCE) -DTEST_ENCLAVE_FILENAME=\"$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE)\" -DQUERY_REQUEST_COSE_FILENAME=\"$(ROOT_DIR)/tam_mock_server/query_request.tam.esp256.cose\" -c $< -o $@
 	@echo "CXX  <=  $<"
 
 $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_OCALL_O): App/src/dcap_quote_ocalls.cpp App/inc/dcap_quote_ocalls.h
