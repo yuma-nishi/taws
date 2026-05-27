@@ -14,7 +14,6 @@
 #include "ecall_process_teep_result.h"
 #include "sgx_error.h"
 #include "sgx_urts.h"
-#include "tam_esp256_public_key.h"
 #include "teep_agent_esp256_public_key.h"
 #include "teep_buffer_sizes.h"
 
@@ -97,13 +96,6 @@ static bool contains_nonzero_byte(const uint8_t *buf, size_t len)
     return false;
 }
 
-static void init_esp256_public_key(const uint8_t *public_key, teep_mechanism_t *mechanism)
-{
-    memset(mechanism, 0, sizeof(*mechanism));
-    assert(teep_key_init_esp256_public_key(public_key, NULLUsefulBufC, &mechanism->key) == TEEP_SUCCESS);
-    mechanism->cose_tag = CBOR_TAG_COSE_SIGN1;
-}
-
 static void assert_cose_sign1_alg_esp256(const uint8_t *cose, size_t cose_len)
 {
     size_t offset = 0;
@@ -126,25 +118,18 @@ static void assert_cose_sign1_alg_esp256(const uint8_t *cose, size_t cose_len)
     assert(T_COSE_ALGORITHM_ESP256 == -9);
 }
 
-static void verify_cose_sign1(const uint8_t *cose,
-                              size_t cose_len,
-                              const uint8_t *public_key,
-                              UsefulBufC *payload)
+static void decode_query_request_challenge(const uint8_t *cose,
+                                           size_t cose_len,
+                                           teep_buf_t *challenge)
 {
-    teep_mechanism_t verify = {};
-    init_esp256_public_key(public_key, &verify);
+    UsefulBufC payload = NULLUsefulBufC;
     UsefulBufC cose_buf = { .ptr = cose, .len = cose_len };
-    teep_err_t result = teep_verify_cose_sign1(cose_buf, &verify, payload);
-    if (result != TEEP_SUCCESS) {
-        verify.cose_tag = CBOR_TAG_COSE_SIGN;
-        result = teep_verify_cose_sign(cose_buf, &verify, 1, payload);
-    }
-    assert(result == TEEP_SUCCESS);
-    (void)teep_free_key(&verify.key);
-}
+    struct t_cose_sign1_verify_ctx verify_ctx;
 
-static void decode_query_request_challenge(UsefulBufC payload, teep_buf_t *challenge)
-{
+    t_cose_sign1_verify_init(&verify_ctx, T_COSE_OPT_DECODE_ONLY);
+    assert(t_cose_sign1_verify(&verify_ctx, cose_buf, &payload, NULL) == T_COSE_SUCCESS);
+    assert(payload.ptr != NULL);
+
     teep_message_t message = {};
     assert(teep_set_message_from_bytes(static_cast<const uint8_t *>(payload.ptr),
                                        payload.len,
@@ -156,15 +141,6 @@ static void decode_query_request_challenge(UsefulBufC payload, teep_buf_t *chall
     if ((message.query_request.contains & TEEP_MESSAGE_CONTAINS_CHALLENGE) != 0) {
         *challenge = message.query_request.challenge;
     }
-}
-
-static void decode_query_response(UsefulBufC payload, teep_message_t *message)
-{
-    memset(message, 0, sizeof(*message));
-    assert(teep_set_message_from_bytes(static_cast<const uint8_t *>(payload.ptr),
-                                       payload.len,
-                                       message) == TEEP_SUCCESS);
-    assert(message->teep_message.type == TEEP_TYPE_QUERY_RESPONSE);
 }
 
 static void verify_attestation_payload(const teep_query_response_t *query_response,
@@ -210,8 +186,37 @@ static void verify_attestation_payload(const teep_query_response_t *query_respon
     assert(QCBORDecode_Finish(&decode_context) == QCBOR_SUCCESS);
 }
 
+static size_t verify_generated_query_response(const uint8_t *response_cose,
+                                              size_t response_cose_len,
+                                              const teep_buf_t *challenge)
+{
+    assert_cose_sign1_alg_esp256(response_cose, response_cose_len);
+
+    teep_mechanism_t verify = {};
+    assert(teep_key_init_esp256_public_key(teep_agent_esp256_public_key,
+                                           NULLUsefulBufC,
+                                           &verify.key) == TEEP_SUCCESS);
+    verify.cose_tag = CBOR_TAG_COSE_SIGN1;
+
+    UsefulBufC response_payload = NULLUsefulBufC;
+    UsefulBufC response_buf = { .ptr = response_cose, .len = response_cose_len };
+    assert(teep_verify_cose_sign1(response_buf, &verify, &response_payload) == TEEP_SUCCESS);
+    (void)teep_free_key(&verify.key);
+
+    teep_message_t response_message = {};
+    assert(teep_set_message_from_bytes(static_cast<const uint8_t *>(response_payload.ptr),
+                                       response_payload.len,
+                                       &response_message) == TEEP_SUCCESS);
+    assert(response_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE);
+    verify_attestation_payload(&response_message.query_response, challenge);
+
+    return response_message.query_response.attestation_payload.len;
+}
+
 int main(void)
 {
+    setvbuf(stdout, NULL, _IONBF, 0);
+
     uint8_t *query_request_cose = NULL;
     size_t query_request_cose_len = 0;
     if (!read_file(QUERY_REQUEST_COSE_FILENAME, &query_request_cose, &query_request_cose_len)) {
@@ -219,14 +224,8 @@ int main(void)
         return 1;
     }
 
-    assert_cose_sign1_alg_esp256(query_request_cose, query_request_cose_len);
-    UsefulBufC query_request_payload = NULLUsefulBufC;
-    verify_cose_sign1(query_request_cose,
-                      query_request_cose_len,
-                      tam_esp256_public_key,
-                      &query_request_payload);
     teep_buf_t challenge = {};
-    decode_query_request_challenge(query_request_payload, &challenge);
+    decode_query_request_challenge(query_request_cose, query_request_cose_len, &challenge);
 
     sgx_enclave_id_t eid = 0;
     sgx_status_t sgx_ret = sgx_create_enclave(TEST_ENCLAVE_FILENAME,
@@ -286,20 +285,15 @@ int main(void)
         return require_dcap() ? 1 : 0;
     }
     assert(response_cose_len > 0);
-    assert_cose_sign1_alg_esp256(response_cose, response_cose_len);
+    printf("[PASS] 1/2 ecall_process_message generated QueryResponse; cose_size=%zu\n",
+           response_cose_len);
 
-    UsefulBufC response_payload = NULLUsefulBufC;
-    verify_cose_sign1(response_cose,
-                      response_cose_len,
-                      teep_agent_esp256_public_key,
-                      &response_payload);
-
-    teep_message_t response_message = {};
-    decode_query_response(response_payload, &response_message);
-    verify_attestation_payload(&response_message.query_response, &challenge);
+    size_t attestation_payload_len = verify_generated_query_response(response_cose,
+                                                                     response_cose_len,
+                                                                     &challenge);
     free(query_request_cose);
 
-    printf("[PASS] ecall_process_message generated a DCAP QueryResponse; payload_size=%zu\n",
-           response_message.query_response.attestation_payload.len);
+    printf("[PASS] 2/2 verified generated ESP256-signed DCAP QueryResponse; payload_size=%zu\n",
+           attestation_payload_len);
     return 0;
 }
