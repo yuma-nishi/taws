@@ -100,14 +100,13 @@ The Docker build compiles Intel DCAP QuoteGeneration Debian packages from `third
 
 ```bash
 cd ..
-git submodule update --init --recursive
 docker build -t taws .
 ```
 
 Run AESM and TAWS together on an SGX hardware host with Docker Compose. TAWS uses DCAP quote generation APIs such as `sgx_qe_get_target_info` and `sgx_qe_get_quote`, so it needs access to an AESM socket. In the default Compose workflow, the `aesm` service provides that socket, writes it to the `aesmd-socket` Docker volume, and TAWS mounts the same volume at `/var/run/aesmd`. PCCS listens only on `127.0.0.1:8081` inside the TAWS container; only the TAWS web port is published.
 
 ```bash
-PCCS_API_KEY=your-intel-pcs-api-key docker compose up
+PCCS_API_KEY=<your-intel-pcs-api-key> docker compose up
 ```
 
 If your SGX driver exposes devices under `/dev/sgx/`, override the default device paths:

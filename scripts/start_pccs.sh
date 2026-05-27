@@ -43,7 +43,7 @@ const normalizedConfig = rawConfig
 const config = JSON.parse(normalizedConfig);
 
 config.HTTPS_PORT = 8081;
-config.hosts = '127.0.0.1';
+config.hosts = process.env.PCCS_HOSTS || '127.0.0.1';
 config.ApiKey = process.env.PCCS_API_KEY || config.ApiKey || '';
 config.proxy = process.env.PCCS_PROXY || config.proxy || '';
 config.CachingFillMode = process.env.PCCS_CACHING_MODE || config.CachingFillMode || 'LAZY';
