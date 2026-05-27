@@ -42,18 +42,27 @@ extern "C" {
 #include "suit_report_esp256_cose_key_private.h"
 #include "suit_config.h"
 #include "ecall_process_teep_result.h"
+#include "teep_buffer_sizes.h"
 
 
-#define MAX_SEND_BUFFER_SIZE            1024*2
+#define MAX_SEND_BUFFER_SIZE            TEEP_SEND_BUFFER_SIZE
 #define ERR_MSG_BUF_LEN                 32
-#define WORK_BUF_LEN                 1024
+#define WORK_BUF_LEN                    TEEP_WORK_BUFFER_SIZE
 #define SUPPORTED_VERSION               0
 #define SUPPORTED_CIPHER_SUITES_LEN     1
 #define REPORT_SIZE (1024)
 
+#ifndef SGX_EVIDENCE
+#define SGX_EVIDENCE (1)
+#endif
+
+#if SGX_EVIDENCE != 0 && SGX_EVIDENCE != 1
+#error "SGX_EVIDENCE must be 0 or 1"
+#endif
+
 
 const teep_cipher_suite_t supported_teep_cipher_suites[SUPPORTED_CIPHER_SUITES_LEN] = {
-    { { { CBOR_TAG_COSE_SIGN1, T_COSE_ALGORITHM_ES256 }, { 0, 0 } } }
+    { { { CBOR_TAG_COSE_SIGN1, T_COSE_ALGORITHM_ESP256 }, { 0, 0 } } }
 };
 
 static const teep_cipher_suite_t TeepCipherSuiteInvalid = {{
@@ -64,6 +73,7 @@ static const teep_cipher_suite_t TeepCipherSuiteInvalid = {{
 static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
+static const char k_dcap_quote_attestation_payload_format[] = "application/sgx-quote3-teep-bundle";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
@@ -139,10 +149,6 @@ static int build_tc_info_cbor_from_tc_list_item(const tc_list_item_t *item, teep
     out_tc_info->len = encoded_tc_info.len;
     return 0;
 }
-
-
-
-
 
 /*!
     \brief      Create teep-error message.
@@ -285,24 +291,50 @@ out:
         query_response->contains |= TEEP_MESSAGE_CONTAINS_TOKEN;
     }
 
+    (void)cipher_suite;
     query_response->selected_version = version;
-    query_response->selected_teep_cipher_suite = cipher_suite;
+    query_response->contains |= TEEP_MESSAGE_CONTAINS_SELECTED_VERSION;
 
     // Build QueryResponse and include attestation payload when requested.
     query_response->type = TEEP_TYPE_QUERY_RESPONSE;
     if(query_request->data_item_requested.attestation){
-        PRINT_DEBUG_LOG("[TEEP Agent] generate Generic EAT Evidence\n");
-        result = create_evidence_generic(query_request, tmp, key_pair, &eat);
+        PRINT_DEBUG_LOG("[TEEP Agent] generate attestation evidence\n");
+
+        if(SGX_EVIDENCE == 1){
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: SGX DCAP\n");
+            result = create_evidence_dcap_envelope(query_request, tmp, key_pair, &eat);
+        }else{
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: generic EAT\n");
+            result = create_evidence_generic(query_request, tmp, key_pair, &eat);
+        }
         if (result != TEEP_SUCCESS) {
+            PRINT_DEBUG_LOG("[TEEP Agent] evidence creation failed. %s(%d)\n",
+                            teep_err_to_str(result),
+                            result);
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
+        PRINT_DEBUG_LOG("[TEEP Agent] attestation evidence size=%zu capacity=%zu\n",
+                        eat.len,
+                        tmp.len);
         tmp = UsefulBuf_SliceTail(tmp, eat);
+        if (tmp.ptr == NULL) {
+            err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
+            goto error;
+        }
+        query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
+
         query_response->attestation_payload =
             (teep_buf_t){.len = eat.len,
                          .ptr = const_cast<uint8_t *>(
                              static_cast<const uint8_t *>(eat.ptr))};
-        query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD;
+        if(SGX_EVIDENCE==1){
+            query_response->attestation_payload_format =
+                (teep_buf_t){ .len = sizeof(k_dcap_quote_attestation_payload_format) - 1,
+                              .ptr = reinterpret_cast<const uint8_t *>(
+                                  k_dcap_quote_attestation_payload_format) };
+            query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT;
+        }
     }
 
     if (query_request->data_item_requested.trusted_components) {
@@ -638,6 +670,11 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
 
     UsefulBuf_MAKE_STACK_UB(work_buf, WORK_BUF_LEN);
     work_buf.len = WORK_BUF_LEN; /* Caller-side stack scratch buffer to reduce malloc in subroutines. */
+    PRINT_DEBUG_LOG("[TEEP Broker] buffers: cbor_send=%zu work=%zu allocated_send=%zu recv=%zu\n",
+                    (size_t)MAX_SEND_BUFFER_SIZE,
+                    (size_t)WORK_BUF_LEN,
+                    allocated_len,
+                    recv_len);
 
     if (g_key_state != TEEP_KEY_READY) {
         PRINT_DEBUG_LOG("main : key not initialized.\n");
@@ -712,9 +749,15 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
             free_query_response_tc_list_buffers(&send_message.query_response);
         }
-        PRINT_DEBUG_LOG("main : Failed to encode query_response message. %s(%d)\n", teep_err_to_str(result), result);
+        PRINT_DEBUG_LOG("main : Failed to encode query_response message. %s(%d) capacity=%zu\n",
+                        teep_err_to_str(result),
+                        result,
+                        (size_t)MAX_SEND_BUFFER_SIZE);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
+    PRINT_DEBUG_LOG("[TEEP Broker] encoded TEEP message size=%zu capacity=%zu\n",
+                    cbor_send_buf.len,
+                    (size_t)MAX_SEND_BUFFER_SIZE);
 
     UsefulBuf cose_send_buf = (UsefulBuf){ .ptr = send_buf, .len = allocated_len };
     cose_send_buf.len = allocated_len;
@@ -724,9 +767,16 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
         if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
             free_query_response_tc_list_buffers(&send_message.query_response);
         }
-        PRINT_DEBUG_LOG("main : Failed to sign to query_response message. %s(%d)\n", teep_err_to_str(result), result);
+        PRINT_DEBUG_LOG("main : Failed to sign to query_response message. %s(%d) cbor_len=%zu allocated_len=%zu\n",
+                        teep_err_to_str(result),
+                        result,
+                        cbor_send_buf.len,
+                        allocated_len);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
+    PRINT_DEBUG_LOG("[TEEP Broker] signed COSE message size=%zu allocated_len=%zu\n",
+                    cose_send_buf.len,
+                    allocated_len);
 
     if (actual_len != NULL) {
         *actual_len = cose_send_buf.len;

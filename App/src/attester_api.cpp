@@ -53,9 +53,9 @@ static int sgx_initialized(const char *keygen_mode)
         int result = 0;
         sgx_status_t sgx_ret = SGX_SUCCESS;
         if (strcmp(keygen_mode, "yes") == 0) {
-            sgx_ret = ecall_teep_generate_es256_key_pair(global_eid, &result);
+            sgx_ret = ecall_teep_generate_esp256_key_pair(global_eid, &result);
         } else if (strcmp(keygen_mode, "no") == 0) {
-            sgx_ret = ecall_teep_set_es256_key(global_eid, &result);
+            sgx_ret = ecall_teep_set_esp256_key(global_eid, &result);
         } else {
             return -1;
         }

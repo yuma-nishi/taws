@@ -41,8 +41,57 @@ require_dir "${SGXSSL_DIR}"
 require_dir "${WAMR_DIR}"
 require_dir "${WAMR_SGX_PLATFORM_DIR}"
 
+patch_sgxssl_no_asm() {
+  local build_script="${SGXSSL_DIR}/build_openssl.sh"
+
+  if grep -Eq -- '--with-rand-seed=none[[:space:]]+no-asm' "${build_script}"; then
+    echo "[INFO] SGXSSL OpenSSL Configure already includes no-asm"
+    return
+  fi
+
+  if ! grep -Eq -- '--with-rand-seed=none[[:space:]]+' "${build_script}"; then
+    echo "[ERROR] failed to find SGXSSL OpenSSL Configure insertion point in ${build_script}" >&2
+    exit 1
+  fi
+
+  sed -i 's/--with-rand-seed=none /--with-rand-seed=none no-asm /' "${build_script}"
+  echo "[INFO] Patched SGXSSL OpenSSL Configure with no-asm in ${build_script}"
+}
+
+find_sgxssl_configdata() {
+  local configdata
+  configdata="$(find "${SGXSSL_OPENSSL_SOURCE_DIR}" -maxdepth 2 -path '*/openssl-3.0.*/configdata.pm' | sort -V | tail -n 1)"
+  if [[ -z "${configdata}" ]]; then
+    echo "[ERROR] SGXSSL OpenSSL configdata.pm was not found." >&2
+    exit 1
+  fi
+  echo "${configdata}"
+}
+
+verify_sgxssl_no_asm() {
+  local configdata
+  local options
+  configdata="$(find_sgxssl_configdata)"
+  options="$(perl "${configdata}" --options)"
+  if printf '%s\n' "${options}" | awk '
+    /^Disabled features:/ { in_disabled = 1; next }
+    /^Enabled features:/ { in_disabled = 0; next }
+    in_disabled && $1 == "asm" { found = 1 }
+    END { exit found ? 0 : 1 }
+  '; then
+    echo "[INFO] Verified SGXSSL OpenSSL no-asm in ${configdata}"
+    return
+  fi
+
+  echo "[ERROR] SGXSSL OpenSSL no-asm was requested, but OpenSSL asm is still enabled." >&2
+  echo "[ERROR] Check ${configdata} with: perl ${configdata} --options" >&2
+  perl "${configdata}" --options | sed -n '/^Enabled features:/,/^Disabled features:/p' >&2
+  exit 1
+}
+
 build_sgxssl() {
   echo "[INFO] Building SGXSSL..."
+  patch_sgxssl_no_asm
   (
     cd "${SGXSSL_OPENSSL_SOURCE_DIR}"
     if [[ ! -f openssl-3.0.18.tar.gz ]]; then
@@ -53,6 +102,7 @@ build_sgxssl() {
   (
     cd "${SGXSSL_DIR}"
     ./build_openssl.sh
+    verify_sgxssl_no_asm
     make SGX_MODE=SIM
   )
 
@@ -63,7 +113,9 @@ build_sgxssl() {
 
 build_wamr() {
   echo "[INFO] Building wasm-micro-runtime (linux-sgx)..."
+  set +u
   source /opt/intel/sgxsdk/environment
+  set -u
   (
     cd "${WAMR_SGX_PLATFORM_DIR}"
     rm -rf build

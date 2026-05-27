@@ -15,6 +15,7 @@
 #include "teep_http_client.h"
 #include "ecall_process_teep_result.h"
 #include "teep_session_result.h"
+#include "teep_buffer_sizes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +26,7 @@ extern "C" {
 #endif
 
 #define MAX_RECEIVE_BUFFER_SIZE         (1024 * 1024 * 20) // 20MB
-#define MAX_SEND_BUFFER_SIZE            1024*2
+#define MAX_SEND_BUFFER_SIZE            TEEP_SEND_BUFFER_SIZE
 
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t global_eid = 0;
@@ -197,7 +198,9 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
 
         ecall_process_teep_result_t ret = ECALL_PROCESS_TEEP_RESULT_OK;
         size_t cose_send_len = MAX_SEND_BUFFER_SIZE;
-        printf("[TEEP Broker] ECall\n");
+        printf("[TEEP Broker] ECall (send_capacity=%zu recv_len=%zu)\n",
+               (size_t)MAX_SEND_BUFFER_SIZE,
+               cbor_recv_buf.len);
         sgx_status_t sgx_ret = ecall_process_message(global_eid,
                                                      &ret,
                                                      (uint8_t *)cbor_recv_buf.ptr,

@@ -6,9 +6,9 @@
 
 #include "Enclave.h"
 #include "debug_print.h"
-#include "tam_es256_public_key.h"
-#include "teep_agent_es256_private_key.h"
-#include "teep_agent_es256_public_key.h"
+#include "tam_esp256_public_key.h"
+#include "teep_agent_esp256_private_key.h"
+#include "teep_agent_esp256_public_key.h"
 
 #include <stdio.h>
 #include <openssl/ec.h>
@@ -121,7 +121,7 @@ teep_err_t teep_generate_kid(teep_key_t *key) {
 
     \return     This returns one of error codes defined by \ref teep_err_t;
  */
-extern "C" teep_err_t ecall_teep_generate_es256_key_pair() {
+extern "C" teep_err_t ecall_teep_generate_esp256_key_pair() {
     teep_err_t ret = TEEP_ERR_UNEXPECTED_ERROR;
 
     EVP_PKEY_CTX *pctx = NULL;
@@ -169,7 +169,7 @@ extern "C" teep_err_t ecall_teep_generate_es256_key_pair() {
     (void)pub_len;
 
     /* set the public key to key pair */
-    ret = teep_key_init_es256_key_pair(priv_bytes, pub_bytes, NULLUsefulBufC, &agent_sign.key);
+    ret = teep_key_init_esp256_key_pair(priv_bytes, pub_bytes, NULLUsefulBufC, &agent_sign.key);
     if(ret != TEEP_SUCCESS){
         PRINT_DEBUG_LOG("create_evidence_generic : Failed to create cose key. %s(%d)\n", teep_err_to_str(ret), ret);
         goto err;
@@ -191,8 +191,8 @@ extern "C" teep_err_t ecall_teep_generate_es256_key_pair() {
     }
     g_agent_key_owns_kid = true;
 
-    /* setting tam_es256_public_key */
-    ret = teep_key_init_es256_public_key(tam_es256_public_key, NULLUsefulBufC, &tam_verify.key);
+    /* setting tam_esp256_public_key */
+    ret = teep_key_init_esp256_public_key(tam_esp256_public_key, NULLUsefulBufC, &tam_verify.key);
     if (ret != TEEP_SUCCESS) {
         PRINT_DEBUG_LOG("main : Failed to parse t_cose public key. %s(%d)\n", teep_err_to_str(ret), ret);
         goto err;
@@ -232,13 +232,13 @@ extern "C" void ecall_teep_free_keypair(){
 }
 
 
-extern "C" teep_err_t ecall_teep_set_es256_key(){
+extern "C" teep_err_t ecall_teep_set_esp256_key(){
     teep_err_t result = TEEP_ERR_UNEXPECTED_ERROR;
 
     clear_agent_sign_buffers();
     (void)teep_free_key(&agent_sign.key);
     g_key_state = TEEP_KEY_UNINITIALIZED;
-    result = teep_key_init_es256_key_pair(teep_agent_es256_private_key, teep_agent_es256_public_key, NULLUsefulBufC, &agent_sign.key);
+    result = teep_key_init_esp256_key_pair(teep_agent_esp256_private_key, teep_agent_esp256_public_key, NULLUsefulBufC, &agent_sign.key);
     if (result != TEEP_SUCCESS) {
         PRINT_DEBUG_LOG("main : Failed to set key pair. %s(%d)\n", teep_err_to_str(result), result);
         return result;
@@ -250,8 +250,8 @@ extern "C" teep_err_t ecall_teep_set_es256_key(){
     }
     g_agent_key_owns_kid = true;
 
-    /* setting tam_es256_public_key */
-    result = teep_key_init_es256_public_key(tam_es256_public_key, NULLUsefulBufC, &tam_verify.key);
+    /* setting tam_esp256_public_key */
+    result = teep_key_init_esp256_public_key(tam_esp256_public_key, NULLUsefulBufC, &tam_verify.key);
     if (result != TEEP_SUCCESS) {
         PRINT_DEBUG_LOG("main : Failed to parse t_cose public key. %s(%d)\n", teep_err_to_str(result), result);
         return result;

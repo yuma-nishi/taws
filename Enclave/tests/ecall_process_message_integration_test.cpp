@@ -24,7 +24,7 @@ extern "C" {
 #undef delete
 #endif
 
-extern "C" teep_err_t ecall_teep_set_es256_key(void);
+extern "C" teep_err_t ecall_teep_set_esp256_key(void);
 extern "C" void ecall_teep_free_keypair(void);
 extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv_buf,
                                                              size_t recv_len,
@@ -90,9 +90,9 @@ static void test_helper_copy_record_snapshot(const manifest_record_t *record,
 int main(void)
 {
     const char *k_wapp_name = "app.wasm";
-    const char *k_query_request_path = "../testvector/prebuilt/query_request.tam.es256.cose";
-    const char *k_update0_path = "../testvector/prebuilt/update0.tam.esp256.cose";
-    const char *k_update1_path = "../testvector/prebuilt/update1.tam.esp256.cose";
+    const char *k_query_request_path = "tam_mock_server/query_request.tam.esp256.cose";
+    const char *k_update0_path = "tam_mock_server/update0.tam.esp256.cose";
+    const char *k_update1_path = "tam_mock_server/update1.tam.esp256.cose";
 
     uint8_t *query_request_buf = NULL;
     uint8_t *update_message_v0_buf = NULL;
@@ -106,7 +106,7 @@ int main(void)
     test_record_snapshot_for_assertion_t snapshot_after_update0 = {};
 
     tc_manager_remove_all();
-    assert(ecall_teep_set_es256_key() == TEEP_SUCCESS);
+    assert(ecall_teep_set_esp256_key() == TEEP_SUCCESS);
 
     assert(read_file(k_query_request_path, &query_request_buf, &query_request_len));
     assert(read_file(k_update0_path, &update_message_v0_buf, &update_message_v0_len));

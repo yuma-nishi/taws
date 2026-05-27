@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#ifndef TEEP_AGENT_PUBLIC_KEY_H
-#define TEEP_AGENT_PUBLIC_KEY_H
+#ifndef TEEP_AGENT_ESP256_PUBLIC_KEY_H
+#define TEEP_AGENT_ESP256_PUBLIC_KEY_H
 
-const unsigned char teep_agent_es256_public_key[] = {
+const unsigned char teep_agent_esp256_public_key[] = {
     0x04 /* POINT_CONVERSION_UNCOMPRESSED */,
     0x58, 0x86, 0xcd, 0x61, 0xdd, 0x87, 0x58, 0x62,
     0xe5, 0xaa, 0xa8, 0x20, 0xe7, 0xa1, 0x52, 0x74,
@@ -19,4 +19,4 @@ const unsigned char teep_agent_es256_public_key[] = {
     0x42, 0x98, 0xb2, 0x96, 0x1e, 0x25, 0x8f, 0x1b
 };
 
-#endif /* TEEP_AGENT_PUBLIC_KEY_H */
+#endif /* TEEP_AGENT_ESP256_PUBLIC_KEY_H */

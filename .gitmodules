@@ -17,3 +17,9 @@
 [submodule "third_party/wasm-micro-runtime"]
 	path = third_party/wasm-micro-runtime
 	url = https://github.com/bytecodealliance/wasm-micro-runtime.git
+[submodule "third_party/intel-dcap-pccs"]
+	path = third_party/intel-dcap-pccs
+	url = https://github.com/intel/confidential-computing.tee.dcap.pccs
+[submodule "third_party/intel-dcap"]
+	path = third_party/intel-dcap
+	url = https://github.com/intel/confidential-computing.tee.dcap.git
