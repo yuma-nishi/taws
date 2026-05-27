@@ -1,0 +1,357 @@
+#--------------------------------------------------
+# Copyright (c) 2026 SECOM CO., LTD. All Rights reserved.
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#--------------------------------------------------
+
+#
+# SGX/DCAP integration test targets for attester
+#
+
+ROOT_DIR ?= $(CURDIR)
+SGX_SDK ?= /opt/intel/sgxsdk
+SGX_MODE ?= HW
+SGX_ARCH ?= x64
+SGX_DEBUG ?= 1
+SGX_EVIDENCE ?= 1
+
+BUILD_DIR := $(ROOT_DIR)/build
+
+ifeq ($(shell getconf LONG_BIT), 32)
+    SGX_ARCH := x86
+else ifeq ($(findstring -m32, $(CXXFLAGS)), -m32)
+    SGX_ARCH := x86
+endif
+
+ifeq ($(SGX_ARCH), x86)
+    SGX_COMMON_FLAGS := -m32
+    SGX_LIBRARY_PATH := $(SGX_SDK)/lib
+    SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x86/sgx_sign
+    SGX_EDGER8R := $(SGX_SDK)/bin/x86/sgx_edger8r
+else
+    SGX_COMMON_FLAGS := -m64
+    SGX_LIBRARY_PATH := $(SGX_SDK)/lib64
+    SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x64/sgx_sign
+    SGX_EDGER8R := $(SGX_SDK)/bin/x64/sgx_edger8r
+endif
+
+ifeq ($(SGX_DEBUG), 1)
+    SGX_COMMON_FLAGS += -O0 -g -DDEBUG
+else
+    SGX_COMMON_FLAGS += -O2
+endif
+
+SGX_COMMON_FLAGS += -Wall -Wextra -Winit-self -Wpointer-arith -Wreturn-type \
+                    -Waddress -Wsequence-point -Wformat-security \
+                    -Wmissing-include-dirs -Wfloat-equal -Wundef -Wshadow \
+                    -Wcast-align -Wcast-qual -Wconversion -Wredundant-decls
+SGX_COMMON_CFLAGS := $(SGX_COMMON_FLAGS) -Wjump-misses-init -Wstrict-prototypes -Wunsuffixed-float-constants
+SGX_COMMON_CXXFLAGS := $(SGX_COMMON_FLAGS) -Wnon-virtual-dtor -std=c++11
+
+ifneq ($(SGX_MODE), HW)
+    Urts_Library_Name := sgx_urts_sim
+    Uae_Service_Library_Name := sgx_uae_service_sim
+    Trts_Library_Name := sgx_trts_sim
+    Service_Library_Name := sgx_tservice_sim
+else
+    Urts_Library_Name := sgx_urts
+    Uae_Service_Library_Name := sgx_uae_service
+    Trts_Library_Name := sgx_trts
+    Service_Library_Name := sgx_tservice
+endif
+
+SGX_TEST_KEY := Enclave/Enclave_private_test.pem
+SGX_TEST_CONFIG := Enclave/Enclave.config.xml
+SGX_TEST_SYS_INC := \
+	-isystem $(ROOT_DIR)/third_party/QCBOR/inc \
+	-isystem $(ROOT_DIR)/third_party/t_cose/inc \
+	-isystem $(ROOT_DIR)/third_party/libteep/inc \
+	-isystem $(ROOT_DIR)/third_party/libcsuit/inc \
+	-isystem $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include
+
+SGX_TEST_WASM_SYS_INC := \
+	-isystem $(ROOT_DIR)/third_party/wasm-micro-runtime/core/iwasm/include \
+	-isystem $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/utils \
+	-isystem $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/platform/include \
+	-isystem $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/platform/linux-sgx
+
+SGX_TEST_HOST_C_FLAGS := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes
+SGX_TEST_HOST_CXX_FLAGS := $(SGX_COMMON_CXXFLAGS) -fPIC -Wno-attributes
+SGX_TEST_ENCLAVE_BASE_FLAGS := \
+	-nostdinc -fvisibility=hidden -fpie -fstack-protector -fno-builtin-printf \
+	-ffunction-sections -fdata-sections
+SGX_TEST_ENCLAVE_LINK_BASE_FLAGS := \
+	-Wl,-z,relro,-z,now,-z,noexecstack -Wl,--gc-sections \
+	-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles \
+	-L$(SGX_LIBRARY_PATH) -L$(ROOT_DIR)/lib
+SGX_TEST_ENCLAVE_LINK_TRAILER_FLAGS := \
+	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
+	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic \
+	-Wl,--defsym,__ImageBase=0 \
+	-Wl,--version-script=Enclave/Enclave_debug.lds
+
+DCAP_QUOTE_OCALLS_TEST_BIN := $(BUILD_DIR)/dcap_quote_ocalls_test
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN := $(BUILD_DIR)/process_query_request_dcap_integration_sgx_evidence$(SGX_EVIDENCE)/process_query_request_dcap_integration_test
+
+.PHONY: sgx-all dcap-quote-ocalls-test create-evidence-dcap-integration-test process-query-request-dcap-integration-test sgx-clean clean
+
+sgx-all: dcap-quote-ocalls-test
+
+sgx-clean:
+	$(RM) $(DCAP_QUOTE_OCALLS_TEST_BIN)
+	$(RM) -r $(BUILD_DIR)/create_evidence_dcap_integration
+	$(RM) -r $(BUILD_DIR)/process_query_request_dcap_integration*
+
+clean: sgx-clean
+
+
+DCAP_QUOTE_OCALLS_TEST_SRCS := App/tests/dcap_quote_ocalls_test.cpp \
+	App/src/dcap_quote_ocalls.cpp
+
+dcap-quote-ocalls-test: $(DCAP_QUOTE_OCALLS_TEST_BIN)
+	$(DCAP_QUOTE_OCALLS_TEST_BIN)
+
+$(DCAP_QUOTE_OCALLS_TEST_BIN): $(DCAP_QUOTE_OCALLS_TEST_SRCS)
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) -std=c++11 -g -IApp/inc -I$(SGX_SDK)/include $^ -lsgx_dcap_ql -o $@
+	@echo "CXX  =>  $@"
+
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_DIR := $(BUILD_DIR)/create_evidence_dcap_integration
+CREATE_EVIDENCE_DCAP_INTEGRATION_EDL := Enclave/tests/create_evidence_dcap_integration.edl
+CREATE_EVIDENCE_DCAP_INTEGRATION_U_C := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_u.c
+CREATE_EVIDENCE_DCAP_INTEGRATION_U_H := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_u.h
+CREATE_EVIDENCE_DCAP_INTEGRATION_T_C := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_t.c
+CREATE_EVIDENCE_DCAP_INTEGRATION_T_H := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_t.h
+CREATE_EVIDENCE_DCAP_INTEGRATION_U_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_u.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_T_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_t.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_HOST_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_test.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_OCALL_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/dcap_quote_ocalls.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_ECALL_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_ecall.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_EVIDENCE_O := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/Enclave_generate_evidence.o
+CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_enclave.so
+CREATE_EVIDENCE_DCAP_INTEGRATION_SIGNED_ENCLAVE := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_enclave.signed.so
+CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_BIN := $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)/create_evidence_dcap_integration_test
+CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_KEY := $(SGX_TEST_KEY)
+CREATE_EVIDENCE_DCAP_INTEGRATION_CONFIG := $(SGX_TEST_CONFIG)
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_APP_INC := \
+	-I$(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR) \
+	-IApp/inc \
+	-I$(SGX_SDK)/include \
+	$(SGX_TEST_SYS_INC)
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_INC := \
+	-I$(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR) \
+	-IEnclave \
+	-IEnclave/inc \
+	-Icommon \
+	-I$(SGX_SDK)/include \
+	-I$(SGX_SDK)/include/libcxx \
+	-I$(SGX_SDK)/include/tlibc \
+	$(SGX_TEST_SYS_INC)
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_C_FLAGS := \
+	$(SGX_TEST_ENCLAVE_BASE_FLAGS) \
+	$(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_INC)
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS := \
+	$(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_C_FLAGS) -nostdinc++
+
+CREATE_EVIDENCE_DCAP_INTEGRATION_LINK_FLAGS := \
+	$(SGX_TEST_ENCLAVE_LINK_BASE_FLAGS) \
+	-Wl,--whole-archive -l$(Trts_Library_Name) $(ROOT_DIR)/lib/libqcbor.a -Wl,--no-whole-archive \
+	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_tcrypto -l$(Service_Library_Name) -Wl,--end-group \
+	$(SGX_TEST_ENCLAVE_LINK_TRAILER_FLAGS)
+
+create-evidence-dcap-integration-test: $(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_BIN) $(CREATE_EVIDENCE_DCAP_INTEGRATION_SIGNED_ENCLAVE)
+	REQUIRE_DCAP=$(REQUIRE_DCAP) $(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_BIN)
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR):
+	@mkdir -p $@
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_U_H) $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_C): $(CREATE_EVIDENCE_DCAP_INTEGRATION_EDL) | $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)
+	@cd $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR) && $(SGX_EDGER8R) --untrusted $(ROOT_DIR)/$(CREATE_EVIDENCE_DCAP_INTEGRATION_EDL) --search-path $(ROOT_DIR)/Enclave/tests --search-path $(ROOT_DIR)/common --search-path $(SGX_SDK)/include
+	@echo "GEN  =>  $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_H)"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_T_H) $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_C): $(CREATE_EVIDENCE_DCAP_INTEGRATION_EDL) | $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR)
+	@cd $(CREATE_EVIDENCE_DCAP_INTEGRATION_DIR) && $(SGX_EDGER8R) --trusted $(ROOT_DIR)/$(CREATE_EVIDENCE_DCAP_INTEGRATION_EDL) --search-path $(ROOT_DIR)/Enclave/tests --search-path $(ROOT_DIR)/common --search-path $(SGX_SDK)/include
+	@echo "GEN  =>  $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_H)"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_U_O): $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_C) $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_H)
+	$(CC) $(SGX_TEST_HOST_C_FLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_APP_INC) -c $< -o $@
+	@echo "CC   <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_HOST_O): App/tests/create_evidence_dcap_integration_test.cpp $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_H)
+	$(CXX) $(SGX_TEST_HOST_CXX_FLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_APP_INC) -DTEST_ENCLAVE_FILENAME=\"$(CREATE_EVIDENCE_DCAP_INTEGRATION_SIGNED_ENCLAVE)\" -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_OCALL_O): App/src/dcap_quote_ocalls.cpp App/inc/dcap_quote_ocalls.h
+	$(CXX) $(SGX_TEST_HOST_CXX_FLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_APP_INC) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_BIN): $(CREATE_EVIDENCE_DCAP_INTEGRATION_HOST_O) $(CREATE_EVIDENCE_DCAP_INTEGRATION_U_O) $(CREATE_EVIDENCE_DCAP_INTEGRATION_OCALL_O)
+	$(CXX) $^ -o $@ -L$(SGX_LIBRARY_PATH) -L$(ROOT_DIR)/lib -l$(Urts_Library_Name) -l$(Uae_Service_Library_Name) -lsgx_dcap_ql -lqcbor -lpthread
+	@echo "LINK =>  $@"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_T_O): $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_C) $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_H)
+	$(CC) $(SGX_COMMON_CFLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_C_FLAGS) -c $< -o $@
+	@echo "CC   <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_ECALL_O): Enclave/tests/create_evidence_dcap_integration_ecall.cpp $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_EVIDENCE_O): Enclave/src/Enclave_generate_evidence.cpp $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE): $(CREATE_EVIDENCE_DCAP_INTEGRATION_T_O) $(CREATE_EVIDENCE_DCAP_INTEGRATION_ECALL_O) $(CREATE_EVIDENCE_DCAP_INTEGRATION_EVIDENCE_O)
+	$(CXX) $^ -o $@ $(CREATE_EVIDENCE_DCAP_INTEGRATION_LINK_FLAGS)
+	@echo "LINK =>  $@"
+
+$(CREATE_EVIDENCE_DCAP_INTEGRATION_SIGNED_ENCLAVE): $(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE)
+ifeq ($(wildcard $(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_KEY)),)
+	@openssl genrsa -out $(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_KEY) -3 3072
+endif
+	@$(SGX_ENCLAVE_SIGNER) sign -key $(CREATE_EVIDENCE_DCAP_INTEGRATION_TEST_KEY) -enclave $(CREATE_EVIDENCE_DCAP_INTEGRATION_ENCLAVE) -out $@ -config $(CREATE_EVIDENCE_DCAP_INTEGRATION_CONFIG)
+	@echo "SIGN =>  $@"
+
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR := $(BUILD_DIR)/process_query_request_dcap_integration_sgx_evidence$(SGX_EVIDENCE)
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL := Enclave/Enclave.edl
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_C := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_u.c
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_u.h
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_C := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_t.c
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_t.h
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_u.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_t.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_HOST_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/process_query_request_dcap_integration_test.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_OCALL_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/dcap_quote_ocalls.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CORE_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_KEYPAIR_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_generate_keypair.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_PROCESS_MESSAGE_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_process_message.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EVIDENCE_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_generate_evidence.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_WASM_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/Enclave_wasm.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TC_MANAGER_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/tc_manager.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SUIT_WRAPPER_O := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/suit_processor_wrapper.o
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/process_query_request_dcap_integration_enclave.so
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE := $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)/process_query_request_dcap_integration_enclave.signed.so
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_KEY := $(SGX_TEST_KEY)
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_CONFIG := $(SGX_TEST_CONFIG)
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC := \
+	-I$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR) \
+	-IApp/inc \
+	-IEnclave/inc \
+	-Icommon \
+	-I$(SGX_SDK)/include \
+	$(SGX_TEST_SYS_INC) \
+	$(SGX_TEST_WASM_SYS_INC)
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_INC := \
+	-I$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR) \
+	-IEnclave \
+	-IEnclave/inc \
+	-Icommon \
+	-I$(SGX_SDK)/include \
+	-I$(SGX_SDK)/include/libcxx \
+	-I$(SGX_SDK)/include/tlibc \
+	$(SGX_TEST_SYS_INC) \
+	$(SGX_TEST_WASM_SYS_INC)
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_C_FLAGS := \
+	$(SGX_TEST_ENCLAVE_BASE_FLAGS) -DSGX_EVIDENCE=$(SGX_EVIDENCE) \
+	$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_INC)
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS := \
+	$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_C_FLAGS) -nostdinc++
+
+PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_LINK_FLAGS := \
+	$(SGX_TEST_ENCLAVE_LINK_BASE_FLAGS) \
+	-Wl,--whole-archive -l$(Trts_Library_Name) $(ROOT_DIR)/lib/libcsuit.a $(ROOT_DIR)/lib/libteep.a $(ROOT_DIR)/lib/libqcbor.a -Wl,--no-whole-archive \
+	-Wl,--start-group -lsgx_pthread -lsgx_tstdc -lsgx_tcxx -lsgx_tcrypto -l$(Service_Library_Name) $(ROOT_DIR)/lib/libsgx_tsgxssl.a $(ROOT_DIR)/lib/libsgx_tsgxssl_crypto.a $(ROOT_DIR)/lib/libt_cose.a $(ROOT_DIR)/third_party/wasm-micro-runtime/product-mini/platforms/linux-sgx/build/libvmlib.a -Wl,--end-group \
+	$(SGX_TEST_ENCLAVE_LINK_TRAILER_FLAGS) \
+	-Wl,--wrap=suit_store_callback \
+	-Wl,--wrap=suit_invoke_callback \
+	-Wl,--wrap=suit_report_callback \
+	-Wl,--wrap=suit_condition_callback
+
+ifeq ($(SGX_MODE), HW)
+process-query-request-dcap-integration-test: $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE)
+	REQUIRE_DCAP=$(REQUIRE_DCAP) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN)
+else
+process-query-request-dcap-integration-test:
+	@echo "process-query-request-dcap-integration-test requires SGX_MODE=HW" >&2
+	@exit 1
+endif
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR):
+	@mkdir -p $@
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_C): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL) | $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)
+	@cd $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR) && $(SGX_EDGER8R) --untrusted $(ROOT_DIR)/$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL) --search-path $(ROOT_DIR)/Enclave --search-path $(ROOT_DIR)/common --search-path $(SGX_SDK)/include --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include/filefunc --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include/nofilefunc --search-path $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/platform/linux-sgx
+	@echo "GEN  =>  $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H)"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_C): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL) | $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR)
+	@cd $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_DIR) && $(SGX_EDGER8R) --trusted $(ROOT_DIR)/$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EDL) --search-path $(ROOT_DIR)/Enclave --search-path $(ROOT_DIR)/common --search-path $(SGX_SDK)/include --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include/filefunc --search-path $(ROOT_DIR)/third_party/intel-sgx-ssl/Linux/package/include/nofilefunc --search-path $(ROOT_DIR)/third_party/wasm-micro-runtime/core/shared/platform/linux-sgx
+	@echo "GEN  =>  $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_O): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_C) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H)
+	$(CC) $(SGX_TEST_HOST_C_FLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC) -c $< -o $@
+	@echo "CC   <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_HOST_O): App/tests/process_query_request_dcap_integration_test.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_H)
+	$(CXX) $(SGX_TEST_HOST_CXX_FLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC) -DSGX_EVIDENCE=$(SGX_EVIDENCE) -DTEST_ENCLAVE_FILENAME=\"$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE)\" -DQUERY_REQUEST_COSE_FILENAME=\"$(ROOT_DIR)/tam_mock_server/query_request.tam.esp256.cose\" -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_OCALL_O): App/src/dcap_quote_ocalls.cpp App/inc/dcap_quote_ocalls.h
+	$(CXX) $(SGX_TEST_HOST_CXX_FLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_APP_INC) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_BIN): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_HOST_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_U_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_OCALL_O)
+	$(CXX) $^ -o $@ -L$(SGX_LIBRARY_PATH) -L$(ROOT_DIR)/lib -l$(Urts_Library_Name) -l$(Uae_Service_Library_Name) -lsgx_usgxssl -lsgx_dcap_ql -lteep -lt_cose -lqcbor -lcrypto -lpthread $(ROOT_DIR)/third_party/wasm-micro-runtime/product-mini/platforms/linux-sgx/build/libvmlib_untrusted.a
+	@echo "LINK =>  $@"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_O): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_C) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CC) $(SGX_COMMON_CFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_C_FLAGS) -c $< -o $@
+	@echo "CC   <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CORE_O): Enclave/src/Enclave.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_KEYPAIR_O): Enclave/src/Enclave_generate_keypair.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_PROCESS_MESSAGE_O): Enclave/src/Enclave_process_message.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EVIDENCE_O): Enclave/src/Enclave_generate_evidence.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_WASM_O): Enclave/src/Enclave_wasm.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TC_MANAGER_O): Enclave/src/tc_manager.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SUIT_WRAPPER_O): Enclave/src/suit_processor_wrapper.cpp $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_H)
+	$(CXX) $(SGX_COMMON_CXXFLAGS) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CXX_FLAGS) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_T_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE_CORE_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_KEYPAIR_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_PROCESS_MESSAGE_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_EVIDENCE_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_WASM_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TC_MANAGER_O) $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SUIT_WRAPPER_O)
+	$(CXX) $^ -o $@ $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_LINK_FLAGS)
+	@echo "LINK =>  $@"
+
+$(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_SIGNED_ENCLAVE): $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE)
+ifeq ($(wildcard $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_KEY)),)
+	@openssl genrsa -out $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_KEY) -3 3072
+endif
+	@$(SGX_ENCLAVE_SIGNER) sign -key $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_TEST_KEY) -enclave $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_ENCLAVE) -out $@ -config $(PROCESS_QUERY_REQUEST_DCAP_INTEGRATION_CONFIG)
+	@echo "SIGN =>  $@"

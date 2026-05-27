@@ -31,6 +31,7 @@ By combining this SGX-based TEEP Agent with the corresponding TAM and Verifier, 
 │   └── 📁 intel-dcap-pccs
 ├── 📄 Makefile
 ├── 📄 Makefile.test
+├── 📄 Makefile.sgx.test
 └── 📄 README.md
 ````
 

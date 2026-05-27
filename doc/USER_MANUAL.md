@@ -104,12 +104,20 @@ Notes:
 | `web --max-output BYTES` | Maximum detector output bytes in Web mode. Default: `16777216`. |
 
 ## Tests
-Run unit tests:
+Run unit and non-SGX integration tests:
 
 ```bash
-make -f Makefile.test
+make -f Makefile.test run
+```
+
+Run SGX/DCAP integration tests:
+
+```bash
+make -f Makefile.sgx.test SGX_MODE=HW create-evidence-dcap-integration-test
+make -f Makefile.sgx.test SGX_MODE=HW SGX_EVIDENCE=1 process-query-request-dcap-integration-test
 ```
 
 Expected result:
 - All test binaries complete successfully.
+- SGX/DCAP tests may report `[SKIP]` when SGX hardware runtime or DCAP quote provider access is unavailable.
 - `make` exits with status `0`.
