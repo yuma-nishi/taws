@@ -42,8 +42,9 @@ When `QueryRequest.data_item_requested.attestation` is true, the TEEP Agent incl
 The attestation payload format depends on the build-time `SGX_EVIDENCE` setting.
 
 #### 3.4.1 SGX DCAP Evidence (`SGX_EVIDENCE=1`)
-`SGX_EVIDENCE=1` is the default build configuration. In this mode:
+`SGX_EVIDENCE=1` is the default build configuration. 
 
+In this mode:
 - `attestation_payload_format` is set to `application/sgx-quote3-teep-bundle`.
 - `attestation_payload` is a CBOR array:
 
@@ -62,7 +63,13 @@ The attestation payload format depends on the build-time `SGX_EVIDENCE` setting.
 TEEP Agent public key x-coordinate || TEEP Agent public key y-coordinate || QueryRequest challenge
 ```
 
-The TAM or verifier is expected to validate the DCAP quote and verify that the SGX report data inside the quote corresponds to `raw-report-data`. This binds the evidence to both the TEEP Agent public key and the TAM challenge from the `QueryRequest`.
+The TAM or verifier is expected to validate the DCAP quote and verify the quote binding as follows:
+
+1. Compute `SHA384(raw-report-data)`.
+2. Compare the resulting 48-byte digest with the first 48 bytes of the SGX Quote `report_body.report_data`.
+3. Verify that the remaining 16 bytes of `report_body.report_data` are zero.
+
+This binds the evidence to both the TEEP Agent public key and the TAM challenge from the `QueryRequest`.
 
 #### 3.4.2 Generic EAT Evidence (`SGX_EVIDENCE=0`)
 `SGX_EVIDENCE=0` is a development and compatibility mode. In this mode, the TEEP Agent returns the existing generic EAT payload in `attestation_payload`.
