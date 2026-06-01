@@ -36,6 +36,39 @@ Message details in this section follow [IETF TEEP Protocol draft section 4](http
 
 Supplement: The initial empty-body `POST` follows TEEP over HTTP draft behavior (see [section 5.1.1](https://www.ietf.org/archive/id/draft-ietf-teep-otrp-over-http-15.html#section-5.1.1) and [section 6.1](https://www.ietf.org/archive/id/draft-ietf-teep-otrp-over-http-15.html#section-6.1)).
 
+### 3.4 `QueryResponse` Attestation Payload
+When `QueryRequest.data_item_requested.attestation` is true, the TEEP Agent includes `attestation_payload` in `QueryResponse`.
+
+The attestation payload format depends on the build-time `SGX_EVIDENCE` setting.
+
+#### 3.4.1 SGX DCAP Evidence (`SGX_EVIDENCE=1`)
+`SGX_EVIDENCE=1` is the default build configuration. In this mode:
+
+- `attestation_payload_format` is set to `application/sgx-quote3-teep-bundle`.
+- `attestation_payload` is a CBOR array:
+
+```cbor-diag
+[
+  raw-dcap-quote3,
+  raw-report-data
+]
+```
+
+`raw-dcap-quote3` is the raw Intel SGX DCAP Quote3 returned by the quote provider.
+
+`raw-report-data` is the byte string used to bind the quote to the TEEP session:
+
+```text
+TEEP Agent public key x-coordinate || TEEP Agent public key y-coordinate || QueryRequest challenge
+```
+
+The TAM or verifier is expected to validate the DCAP quote and verify that the SGX report data inside the quote corresponds to `raw-report-data`. This binds the evidence to both the TEEP Agent public key and the TAM challenge from the `QueryRequest`.
+
+#### 3.4.2 Generic EAT Evidence (`SGX_EVIDENCE=0`)
+`SGX_EVIDENCE=0` is a development and compatibility mode. In this mode, the TEEP Agent returns the existing generic EAT payload in `attestation_payload`.
+
+The DCAP-specific `attestation_payload_format` value `application/sgx-quote3-teep-bundle` is not attached in this mode.
+
 ## 4. Status Codes and Session Handling
 - `200 OK`: Continue the TEEP session using the returned COSE-wrapped TEEP message (CBOR).
 - `204 No Content`: Treat as normal session end.

@@ -67,6 +67,8 @@ TAWS can be started in either a native workflow or a Docker workflow. Both workf
 - Native builds require Go >= 1.22 and have been tested on **Ubuntu 24.04 LTS**. Other Linux distributions may work but have not been verified.
 - Docker builds require Docker access to the SGX devices and a local `sgx_sample_deb` base image prepared by the script below.
 
+By default, builds use `SGX_EVIDENCE=1` and generate SGX DCAP Evidence for the `QueryResponse` attestation payload. `SGX_EVIDENCE=0` is available as a development and compatibility mode for the generic EAT payload. For details of the interface between the TEEP Agent and TAM, see [external-design-teep-tam-exchange.md](./doc/external-design-teep-tam-exchange.md).
+
 Do not commit Intel PCS API keys, PCCS user/admin tokens, private TLS keys, generated local config files, or PCCS cache databases.
 
 ### Native Workflow
