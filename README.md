@@ -67,7 +67,7 @@ Before building or running TAWS, configure the Intel SGX software stack and DCAP
   - See the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
 - PCCS (Provisioning Certificate Caching Service)
   - See [`third_party/intel-dcap-pccs/service/README.md`](./third_party/intel-dcap-pccs/service/README.md). 
-  - You will need an Intel PCS API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
+  - You will need an Intel PCS (Provisioning Certification Service) API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
 ### Native Workflow
 Build and run TAWS directly on the SGX host.

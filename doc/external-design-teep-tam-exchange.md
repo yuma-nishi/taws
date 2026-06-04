@@ -42,7 +42,7 @@ When `QueryRequest.data_item_requested.attestation` is true, the TEEP Agent incl
 The attestation payload format depends on the build-time `SGX_EVIDENCE` setting.
 
 #### 3.4.1 SGX DCAP Evidence (`SGX_EVIDENCE=1`)
-`SGX_EVIDENCE=1` is the default build configuration. 
+`SGX_EVIDENCE=1` is the default build configuration.
 
 In this mode:
 - `attestation_payload_format` is set to `application/sgx-quote3-teep-bundle`.
@@ -74,7 +74,9 @@ This binds the evidence to both the TEEP Agent public key and the TAM challenge 
 #### 3.4.2 Generic EAT Evidence (`SGX_EVIDENCE=0`)
 `SGX_EVIDENCE=0` is a development and compatibility mode. In this mode, the TEEP Agent returns the existing generic EAT payload in `attestation_payload`.
 
-The DCAP-specific `attestation_payload_format` value `application/sgx-quote3-teep-bundle` is not attached in this mode.
+In this mode:
+- `attestation_payload_format` is set to `application/eat+cwt; eat_profile="urn:ietf:rfc:rfc9711"`.
+- `attestation_payload` is the existing COSE Sign1-wrapped generic EAT payload.
 
 ## 4. Status Codes and Session Handling
 - `200 OK`: Continue the TEEP session using the returned COSE-wrapped TEEP message (CBOR).

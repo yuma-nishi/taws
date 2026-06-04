@@ -63,6 +63,11 @@ When attestation is requested, the evidence generation path is selected by the b
 - `SGX_EVIDENCE=1`: call `create_evidence_dcap_envelope()` and build an SGX DCAP quote bundle.
 - `SGX_EVIDENCE=0`: call `create_evidence_generic()` and build the generic EAT payload.
 
+The QueryResponse always includes `attestation_payload_format` when attestation evidence is included:
+
+- `SGX_EVIDENCE=1`: `application/sgx-quote3-teep-bundle`
+- `SGX_EVIDENCE=0`: `application/eat+cwt; eat_profile="urn:ietf:rfc:rfc9711"`
+
 The SGX DCAP path performs the following operations:
 
 1. Get Quoting Enclave target info through `ocall_get_qe_target_info`.
