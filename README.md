@@ -59,19 +59,26 @@ cd taws
 
 ### Prerequisites
 
-TAWS can be started in either a native workflow or a Docker workflow. Both workflows require an Intel SGX hardware-mode environment that supports DCAP quote generation.
+TAWS supports both native and Docker-based workflows.
+Both workflows require an Intel SGX hardware-mode environment that supports DCAP quote generation.
 
-- For Intel SGX SDK, PSW, and DCAP setup, see the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and the [Intel SGX Software Installation Guide for Linux](https://cc-enabling.trustedservices.intel.com/intel-sgx-sw-installation-guide-linux/01/introduction/).
-- For DCAP Quote Generation details, see Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
-- For PCCS setup, see [`third_party/intel-dcap-pccs/service/README.md`](./third_party/intel-dcap-pccs/service/README.md). You need an Intel PCS API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
-- Native builds require Go >= 1.22 and have been tested on **Ubuntu 24.04 LTS**. Other Linux distributions may work but have not been verified.
-- Docker builds require Docker access to the SGX devices and a local `sgx_sample_deb` base image prepared by the script below.
-
-Do not commit Intel PCS API keys, PCCS user/admin tokens, private TLS keys, generated local config files, or PCCS cache databases.
+Before building or running TAWS, configure the Intel SGX software stack and DCAP infrastructure:
+- Intel SGX SDK, PSW, and DCAP components 
+  - See the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
+- PCCS (Provisioning Certificate Caching Service)
+  - See [`third_party/intel-dcap-pccs/service/README.md`](./third_party/intel-dcap-pccs/service/README.md). 
+  - You will need an Intel PCS (Provisioning Certification Service) API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
 ### Native Workflow
+Build and run TAWS directly on the SGX host.
 
-In the native workflow, install the SGX/DCAP/PCCS dependencies on the host, build TAWS locally, launch the TAM server, and then run the TEEP Agent from the host environment.
+#### Requirements
+- Go 1.22 or later
+- Ubuntu 24.04 LTS (tested environment)
+
+Other Linux distributions may work but have not been verified.
+
+#### Build and Run
 
 ```bash
 # install third_party dependencies
@@ -85,29 +92,36 @@ cd .. && make SGX_MODE=HW SGX_DEBUG=1
 ```
 For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).
 
-If you need a simulation-only development build, use `make SGX_MODE=SIM` instead. SGX DCAP evidence and PCCS are hardware-mode requirements.
+If you need a simulation-only development build, use `make SGX_MODE=SIM` instead. 
+SGX DCAP evidence and PCCS are hardware-mode requirements.
 
 ### Docker Workflow
+The Docker workflow builds and runs TAWS inside containers.
 
-This workflow expects the `sgx_sample_deb` base image to be available locally. The image should provide the Intel SGX SDK and PSW Debian packages required by Intel DCAP QuoteGeneration packages.
+#### Requirements
+- Docker with Docker Compose v2 support
+
+#### Build
+Prepare the local `sgx_sample_deb` base image:
 
 ```bash
 cd scripts/
 ./prepare_sgx_base_image.sh
 ```
 
-The Docker build compiles Intel DCAP QuoteGeneration Debian packages from `third_party/intel-dcap/QuoteGeneration`, installs those packages inside the same image, builds TAWS with `SGX_MODE=HW`, and bundles PCCS for local quote provider use. It does not create DCAP build outputs on the native host outside Docker image/cache state.
+Build the TAWS Docker image:
 
 ```bash
 cd ..
-git submodule update --init --recursive
 docker build -t taws .
 ```
 
-Run AESM and TAWS together on an SGX hardware host with Docker Compose. TAWS uses DCAP quote generation APIs such as `sgx_qe_get_target_info` and `sgx_qe_get_quote`, so it needs access to an AESM socket. In the default Compose workflow, the `aesm` service provides that socket, writes it to the `aesmd-socket` Docker volume, and TAWS mounts the same volume at `/var/run/aesmd`. PCCS listens only on `127.0.0.1:8081` inside the TAWS container; only the TAWS web port is published.
+#### Run
+Run TAWS on an SGX hardware host using Docker Compose.
+The default Compose configuration also starts AESM, which is required for SGX quote generation.
 
 ```bash
-PCCS_API_KEY=your-intel-pcs-api-key docker compose up
+PCCS_API_KEY=<your-intel-pcs-api-key> docker compose up
 ```
 
 If your SGX driver exposes devices under `/dev/sgx/`, override the default device paths:
@@ -115,16 +129,14 @@ If your SGX driver exposes devices under `/dev/sgx/`, override the default devic
 ```bash
 SGX_ENCLAVE_DEVICE=/dev/sgx/enclave \
 SGX_PROVISION_DEVICE=/dev/sgx/provision \
-PCCS_API_KEY=your-intel-pcs-api-key \
+PCCS_API_KEY=<your-intel-pcs-api-key> \
 docker compose up
 ```
 
-Optional PCCS runtime environment variables:
-
-- `PCCS_PROXY`: proxy URL used by PCCS to reach Intel PCS.
-- `PCCS_CACHING_MODE`: PCCS caching fill mode. Defaults to `LAZY`; `REQ` and `OFFLINE` are also supported by PCCS.
-
-The `start_pccs.sh` container entrypoint starts the container-local PCCS before the Dockerfile `CMD` runs `taws web` in the foreground.
+### Attestation Configuration
+By default, builds use `SGX_EVIDENCE=1` and generate SGX DCAP Evidence for the `QueryResponse` attestation payload. 
+`SGX_EVIDENCE=0` is available as a development and compatibility mode for the generic EAT payload. 
+For details of the interface between the TEEP Agent and TAM, see [external-design-teep-tam-exchange.md](./doc/external-design-teep-tam-exchange.md).
 
 
 ## Design Documents

@@ -1,13 +1,23 @@
 # TAWS User Manual
 
 ## Purpose
-This document explains how to run and use the TAWS frontend (`./build/go/taws`) in SGX simulation mode.
+This document explains how to run and use the TAWS frontend (`./build/go/taws`) with Intel SGX hardware mode and DCAP Evidence support.
 It covers Web Server usage, CLI usage, available options, and test commands.
 
 ## Scope
 - Target binary: `./build/go/taws`
 - Target modes: `web`, `cli`
 - Related setup/build steps: [README Getting started](../README.md#getting-started)
+
+## Runtime Requirements
+TAWS is configured for Intel SGX hardware mode by default. Running the SGX/DCAP flow requires:
+
+- Intel SGX hardware and SGX hardware runtime.
+- Intel SGX DCAP quote provider libraries.
+- AESM service configured for DCAP quote generation.
+- PCCS access configured for the platform.
+
+The default build setting is `SGX_EVIDENCE=1`, which generates SGX DCAP Evidence for TEEP attestation. Use `SGX_EVIDENCE=0` only as a development or compatibility mode for the generic EAT payload.
 
 ## Running Modes
 Usage:
@@ -120,4 +130,5 @@ make -f Makefile.sgx.test SGX_MODE=HW SGX_EVIDENCE=1 process-query-request-dcap-
 Expected result:
 - All test binaries complete successfully.
 - SGX/DCAP tests may report `[SKIP]` when SGX hardware runtime or DCAP quote provider access is unavailable.
+- Set `REQUIRE_DCAP=1` when SGX/DCAP unavailability should make the test fail instead of skip.
 - `make` exits with status `0`.

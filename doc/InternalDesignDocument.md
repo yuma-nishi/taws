@@ -90,11 +90,12 @@ Browser -->|"output_image"| User
 - A TEEP message received on the REE side is passed to the TEEP Agent in the Enclave.
 - The TEEP Agent verifies the received COSE-signed TEEP message.
   After successful verification, it checks the message `type` and runs `QueryRequest` or `UpdateMessage` processing.
-  - `type == QUERY_REQUEST`: checks whether the request is supported by this implementation, and generates a QueryResponse (including Evidence and TC information when required). If the request is not supported, it generates `TEEP_ERROR`.
+  - `type == QUERY_REQUEST`: checks whether the request is supported by this implementation, and generates a QueryResponse. Attestation Evidence is generated only when requested by `QueryRequest.data_item_requested.attestation`; TC information is included when required. If the request is not supported, it generates `TEEP_ERROR`.
   - `type == UPDATE`: verifies and processes the received manifest with SUIT. On success, it stores or updates app information in records managed by TC-Manager. On failure, it returns `TEEP_ERROR`.
 - On success, it returns a SUCCESS message, and the target app becomes executable in the Enclave.
+- The default Evidence path is SGX DCAP Evidence (`SGX_EVIDENCE=1`). `SGX_EVIDENCE=0` is a development and compatibility path that returns the generic EAT payload instead.
 - Details:
-  - Query/Update processing: [enclave-process-message.md](./enclave-process-message.md)
+  - Query/Update processing, including Evidence generation flows and error handling behavior: [enclave-process-message.md](./enclave-process-message.md)
   - SUIT processing: [suit-processor.md](./suit-processor.md)
   - TC management: [tc-manager.md](./tc-manager.md)
 
@@ -114,6 +115,7 @@ Browser -->|"output_image"| User
 | Module | Role | Design Document |
 | --- | --- | --- |
 | `Enclave_process_message` | Processes TEEP messages | [enclave-process-message.md](./enclave-process-message.md) |
+| `Enclave_generate_evidence` | Generates generic EAT or SGX DCAP Evidence for QueryResponse | [enclave-process-message.md](./enclave-process-message.md) |
 | `tc_manager` | Manages TC records | [tc-manager.md](./tc-manager.md) |
 | `suit_manifest_process` | Processes SUIT manifests | [suit-processor.md](./suit-processor.md) |
 | `invoke_wasm` | Controls WASM execution | [invoke_wasm.md](./invoke_wasm.md) |

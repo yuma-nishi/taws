@@ -98,7 +98,8 @@ flowchart LR
   SuitKey -->|SuitPrivateKey| EPM
 
   AttesterKey -->|AttesterPrivateKey| Evidence
-  Evidence -->|Evidence| EPM
+  EPM -->|"QueryRequest challenge,<br/>TEEP Agent key information"| Evidence
+  Evidence -->|"attestation_payload<br/>(DCAP quote bundle or generic EAT)"| EPM
   EPM -->|UpdateMessage.manifest| SP
   SP -->|wapp_name,wapp_bin| TCM
   TCM <--> |wapp_name,wapp_bin| Record
@@ -113,11 +114,17 @@ flowchart LR
   CAPI[App/src/attester_api.cpp]
   Session[App/src/sgx_teep_session.cpp]
   EPM[Enclave_process_message.cpp]
+  Evidence[Enclave_generate_evidence.cpp]
   EWASM[Enclave_wasm.cpp]
+  DCAP[DCAP quote provider / AESM]
 
   CAPI -->|ECALL appName,func,input_image| EWASM
   EWASM -->|output_image| CAPI
 
   Session -->|ECALL teep message| EPM
-  EPM -->| teep message| Session
+  EPM -->|teep message with attestation_payload| Session
+  EPM -->|"QueryRequest challenge,<br/>TEEP Agent key information"| Evidence
+  Evidence -->|"OCALL: get QE target info,<br/>quote size, quote"| DCAP
+  DCAP -->|"QE target info,<br/>quote size, DCAP quote"| Evidence
+  Evidence -->|"attestation_payload<br/>(DCAP quote bundle)"| EPM
 ```

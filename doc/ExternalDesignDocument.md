@@ -7,7 +7,8 @@ This document defines the external behavior of the Attester, including user-visi
 
 ## 2. Preconditions and Constraints
 ### 2.1 Preconditions
-- The TEE runs in Intel SGX simulation mode.
+- The TEE Device runs in Intel SGX hardware mode for the standard flow.
+- SGX DCAP Evidence generation requires an SGX hardware runtime, DCAP quote provider, AESM, and PCCS access.
 - The TAM is started before the Attester.
 - Network connectivity is available.
 
@@ -21,6 +22,8 @@ This document defines the external behavior of the Attester, including user-visi
 ## 3. System Overview
 The TEE Device receives image input from a Web Browser or CLI, executes a WASM app (for example, YOLOv8) inside the TEE, and returns inference results.
 It also communicates with the TAM over HTTP to run the app provisioning session.
+
+The standard TEEP session can return SGX DCAP Evidence in the `QueryResponse` attestation payload. Simulation mode is only a development build option and does not provide SGX DCAP Evidence. TAM developers should use [external-design-teep-tam-exchange.md](./external-design-teep-tam-exchange.md) as the contract for the DCAP `QueryResponse` attestation payload.
 
 ---
 

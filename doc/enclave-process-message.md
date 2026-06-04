@@ -55,7 +55,31 @@ This section clarifies TEEP Agent state transitions and the message type the TEE
 
 ECALL return value definitions are in `common/ecall_process_teep_result.h`.
 
-## 6. Dependent Modules
+## 6. `process_query_request` Evidence Generation
+`process_query_request` generates attestation evidence only when `QueryRequest.data_item_requested.attestation` is true.
+
+When attestation is requested, the evidence generation path is selected by the build-time `SGX_EVIDENCE` setting:
+
+- `SGX_EVIDENCE=1`: call `create_evidence_dcap_envelope()` and build an SGX DCAP quote bundle.
+- `SGX_EVIDENCE=0`: call `create_evidence_generic()` and build the generic EAT payload.
+
+The QueryResponse always includes `attestation_payload_format` when attestation evidence is included:
+
+- `SGX_EVIDENCE=1`: `application/sgx-quote3-teep-bundle`
+- `SGX_EVIDENCE=0`: `application/eat+cwt; eat_profile="urn:ietf:rfc:rfc9711"`
+
+The SGX DCAP path performs the following operations:
+
+1. Get Quoting Enclave target info through `ocall_get_qe_target_info`.
+2. Create SGX report data from the TEEP Agent public key and `QueryRequest` challenge.
+3. Call `sgx_create_report` for the Quoting Enclave target.
+4. Get the required quote size through `ocall_get_quote_size`.
+5. Get the DCAP quote through `ocall_get_quote`.
+6. Encode the attestation payload as a CBOR array containing `raw-dcap-quote3` and `raw-report-data`.
+
+If evidence generation fails, `process_query_request` returns an `ERROR_MESSAGE` with `TEEP_ERR_CODE_TEMPORARY_ERROR`.
+
+## 7. Dependent Modules
 | Module | Role | Detailed design |
 | --- | --- | --- |
 | `tc_manager` | Store TC records and apply update rules | [tc-manager.md](./tc-manager.md) |

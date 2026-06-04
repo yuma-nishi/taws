@@ -74,6 +74,8 @@ static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
 static const char k_dcap_quote_attestation_payload_format[] = "application/sgx-quote3-teep-bundle";
+static const char k_generic_eat_attestation_payload_format[] =
+    "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
@@ -328,13 +330,20 @@ out:
             (teep_buf_t){.len = eat.len,
                          .ptr = const_cast<uint8_t *>(
                              static_cast<const uint8_t *>(eat.ptr))};
+        const char *attestation_payload_format = NULL;
+        size_t attestation_payload_format_len = 0;
         if(SGX_EVIDENCE==1){
-            query_response->attestation_payload_format =
-                (teep_buf_t){ .len = sizeof(k_dcap_quote_attestation_payload_format) - 1,
-                              .ptr = reinterpret_cast<const uint8_t *>(
-                                  k_dcap_quote_attestation_payload_format) };
-            query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT;
+            attestation_payload_format = k_dcap_quote_attestation_payload_format;
+            attestation_payload_format_len = sizeof(k_dcap_quote_attestation_payload_format) - 1;
+        }else{
+            attestation_payload_format = k_generic_eat_attestation_payload_format;
+            attestation_payload_format_len = sizeof(k_generic_eat_attestation_payload_format) - 1;
         }
+        query_response->attestation_payload_format =
+            (teep_buf_t){ .len = attestation_payload_format_len,
+                          .ptr = reinterpret_cast<const uint8_t *>(
+                              attestation_payload_format) };
+        query_response->contains |= TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT;
     }
 
     if (query_request->data_item_requested.trusted_components) {

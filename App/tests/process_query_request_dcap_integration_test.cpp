@@ -159,12 +159,16 @@ static void verify_attestation_payload(const teep_query_response_t *query_respon
 
 #if SGX_EVIDENCE == 1
     const char expected_format[] = "application/sgx-quote3-teep-bundle";
+#else
+    const char expected_format[] = "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
+#endif
     assert((query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT) != 0);
     assert(query_response->attestation_payload_format.len == strlen(expected_format));
     assert(memcmp(query_response->attestation_payload_format.ptr,
                   expected_format,
                   strlen(expected_format)) == 0);
 
+#if SGX_EVIDENCE == 1
     UsefulBufC encoded_payload = {
         .ptr = query_response->attestation_payload.ptr,
         .len = query_response->attestation_payload.len,
@@ -195,8 +199,6 @@ static void verify_attestation_payload(const teep_query_response_t *query_respon
     }
     assert(QCBORDecode_Finish(&decode_context) == QCBOR_SUCCESS);
 #else
-    assert((query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT) == 0);
-
     const uint8_t *payload = query_response->attestation_payload.ptr;
     size_t payload_len = query_response->attestation_payload.len;
     assert(contains_nonzero_byte(payload, payload_len));
