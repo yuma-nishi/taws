@@ -28,14 +28,6 @@ echo "[INFO] preparing confidential-computing.sgx..."
 
   cd docker/build
 
-  echo "[INFO] building SGX SDK base image: aesm"
-  docker build  --target aesm \
-      --build-arg https_proxy="${https_proxy:-}" \
-      --build-arg http_proxy="${http_proxy:-}" \
-      -t sgx_aesm \
-      -f ./Dockerfile \
-      ../../
-
   echo "[INFO] building SGX SDK base image: sgx_sample_deb"
   docker build --target sample_deb \
     --build-arg https_proxy="${https_proxy:-}" \
@@ -43,12 +35,8 @@ echo "[INFO] preparing confidential-computing.sgx..."
     -t sgx_sample_deb \
     -f ./Dockerfile \
     ../../
-
-  docker volume create --driver local --opt type=tmpfs --opt device=tmpfs --opt o=rw aesmd-socket
 )
 
 
 echo "[INFO] done"
-echo "  - AESM image: sgx_aesm"
 echo "  - TAWS base image: sgx_sample_deb"
-echo "  - AESM socket volume: aesmd-socket"
