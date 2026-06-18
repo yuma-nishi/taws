@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libboost-system-dev \
     libboost-thread-dev \
     libcurl4-openssl-dev \
+    libsgx-aesm-quote-ex-plugin \
     libprotobuf-c-dev \
     libsgx-ae-pce \
     libsgx-enclave-common \
@@ -88,8 +89,8 @@ RUN bash -lc "source /opt/intel/sgxsdk/environment \
     && cd /work/taws \
     && make SGX_MODE=HW SGX_DEBUG=1"
 
-COPY scripts/start_pccs.sh /usr/local/bin/start-pccs
-RUN chmod 0755 /usr/local/bin/start-pccs
+COPY scripts/start_sgx_services.sh /usr/local/bin/start-sgx-services
+RUN chmod 0755 /usr/local/bin/start-sgx-services
 
 ENV SGX_MODE=HW
 ENV TAWS_WEB_ADDR=0.0.0.0:8181
@@ -98,5 +99,5 @@ ENV PCCS_CACHING_MODE=LAZY
 
 EXPOSE 8181
 
-ENTRYPOINT ["/usr/local/bin/start-pccs"]
+ENTRYPOINT ["/usr/local/bin/start-sgx-services"]
 CMD ["bash", "-lc", "source /opt/intel/sgxsdk/environment && cd /work/taws && exec ./build/go/taws web --addr \"${TAWS_WEB_ADDR}\" --url \"${TAWS_TAM_URL}\""]
