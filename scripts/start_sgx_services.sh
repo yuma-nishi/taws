@@ -11,9 +11,15 @@ PCCS_HOME=/opt/intel/sgx-dcap-pccs
 PCCS_CONFIG="${PCCS_HOME}/config/default.json"
 PCCS_SSL_DIR="${PCCS_HOME}/ssl_key"
 QCNL_CONFIG=/etc/sgx_default_qcnl.conf
+AESM_HOME=
 PCCS_PID=
+AESM_PID=
 
 cleanup() {
+    if [ -n "${AESM_PID}" ] && kill -0 "${AESM_PID}" >/dev/null 2>&1; then
+        kill "${AESM_PID}"
+        wait "${AESM_PID}" >/dev/null 2>&1 || true
+    fi
     if [ -n "${PCCS_PID}" ] && kill -0 "${PCCS_PID}" >/dev/null 2>&1; then
         kill "${PCCS_PID}"
         wait "${PCCS_PID}" >/dev/null 2>&1 || true
@@ -71,6 +77,32 @@ configure_qcnl() {
 EOF
 }
 
+detect_aesm_home() {
+    if [ -x /opt/intel/sgx-aesm-service/aesm/aesm_service ]; then
+        AESM_HOME=/opt/intel/sgx-aesm-service/aesm
+        return 0
+    fi
+    if [ -x /opt/intel/sgxpsw/aesm/aesm_service ]; then
+        AESM_HOME=/opt/intel/sgxpsw/aesm
+        return 0
+    fi
+
+    echo "AESM service was not found in the TAWS image" >&2
+    return 1
+}
+
+configure_aesm() {
+    mkdir -p /var/run/aesmd
+    cd "${AESM_HOME}"
+
+    if [ -f libdcap_quoteprov.so ]; then
+        ln -sfn libdcap_quoteprov.so libdcap_quoteprov.so.1
+    fi
+    if [ -f libsgx_default_qcnl_wrapper.so ]; then
+        ln -sfn libsgx_default_qcnl_wrapper.so libsgx_default_qcnl_wrapper.so.1
+    fi
+}
+
 start_pccs() {
     cd "${PCCS_HOME}"
     /bin/su -s /bin/bash pccs -c "NODE_ENV=production /usr/bin/node ./pccs_server.js" &
@@ -90,10 +122,32 @@ start_pccs() {
     return 1
 }
 
+start_aesm() {
+    cd "${AESM_HOME}"
+    LD_LIBRARY_PATH="${AESM_HOME}:${LD_LIBRARY_PATH:-}" ./aesm_service --no-daemon &
+    AESM_PID=$!
+
+    for _ in $(seq 1 30); do
+        if [ -S /var/run/aesmd/aesm.socket ]; then
+            return 0
+        fi
+        if ! kill -0 "${AESM_PID}" >/dev/null 2>&1; then
+            wait "${AESM_PID}"
+        fi
+        sleep 1
+    done
+
+    echo "AESM did not create /var/run/aesmd/aesm.socket" >&2
+    return 1
+}
+
 main() {
     configure_pccs
     configure_qcnl
+    detect_aesm_home
+    configure_aesm
     start_pccs
+    start_aesm
 
     exec "$@"
 }

@@ -96,10 +96,10 @@ If you need a simulation-only development build, use `make SGX_MODE=SIM` instead
 SGX DCAP evidence and PCCS are hardware-mode requirements.
 
 ### Docker Workflow
-The Docker workflow builds and runs TAWS inside containers.
+The Docker workflow builds and runs TAWS inside a single container.
 
 #### Requirements
-- Docker with Docker Compose v2 support
+- Docker
 
 #### Build
 Prepare the local `sgx_sample_deb` base image:
@@ -117,21 +117,31 @@ docker build -t taws .
 ```
 
 #### Run
-Run TAWS on an SGX hardware host using Docker Compose.
-The default Compose configuration also starts AESM, which is required for SGX quote generation.
+Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the
+`taws` container for SGX quote generation.
 
 ```bash
-PCCS_API_KEY=<your-intel-pcs-api-key> docker compose up
+docker run --rm -it \
+  --device /dev/sgx_enclave \
+  --device /dev/sgx_provision \
+  -p 8181:8181 \
+  -e PCCS_API_KEY=<your-intel-pcs-api-key> \
+  taws
 ```
 
-If your SGX driver exposes devices under `/dev/sgx/`, override the default device paths:
+If your SGX driver exposes devices under `/dev/sgx/`, pass those device paths:
 
 ```bash
-SGX_ENCLAVE_DEVICE=/dev/sgx/enclave \
-SGX_PROVISION_DEVICE=/dev/sgx/provision \
-PCCS_API_KEY=<your-intel-pcs-api-key> \
-docker compose up
+docker run --rm -it \
+  --device /dev/sgx/enclave \
+  --device /dev/sgx/provision \
+  -p 8181:8181 \
+  -e PCCS_API_KEY=<your-intel-pcs-api-key> \
+  taws
 ```
+
+Optional runtime settings can be passed with additional `-e` flags:
+`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, and `TAWS_TAM_URL`.
 
 ### Attestation Configuration
 By default, builds use `SGX_EVIDENCE=1` and generate SGX DCAP Evidence for the `QueryResponse` attestation payload. 
