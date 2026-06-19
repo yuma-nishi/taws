@@ -122,18 +122,9 @@ Run TAWS on an SGX hardware host:
 
 ```bash
 docker run --rm -it \
+  --network host \
   --device /dev/sgx_enclave:/dev/sgx_enclave \
   --device /dev/sgx_provision:/dev/sgx_provision \
-  -p 8181:8181 \
-  taws
-```
-
-If your SGX driver exposes devices under `/dev/sgx/`, override the default device paths:
-
-```bash
-docker run --rm -it \
-  --device /dev/sgx/enclave:/dev/sgx/enclave \
-  --device /dev/sgx/provision:/dev/sgx/provision \
   -p 8181:8181 \
   taws
 ```
