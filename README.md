@@ -134,6 +134,7 @@ Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the
 
 ```bash
 docker run --rm -it \
+  --network host \
   --device /dev/sgx_enclave \
   --device /dev/sgx_provision \
   -p 8181:8181 \
