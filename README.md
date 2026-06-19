@@ -96,7 +96,13 @@ If you need a simulation-only development build, use `make SGX_MODE=SIM` instead
 SGX DCAP evidence and PCCS are hardware-mode requirements.
 
 ### Docker Workflow
-The Docker workflow builds and runs TAWS inside a single container.
+The Docker workflow builds and runs TAWS inside a single container. The same
+`Dockerfile` supports two DCAP providers:
+
+- `generic` (default): Intel DCAP default QPL, PCCS, and AESM run in the
+  container.
+- `azure`: Azure DCAP Client is installed for Azure SGX VMs, and PCCS/AESM are
+  not started in the container.
 
 #### Requirements
 - Docker
@@ -113,12 +119,18 @@ Build the TAWS Docker image:
 
 ```bash
 cd ..
-docker build -t taws .
+docker build -t taws:generic .
 ```
 
-#### Run
+For Azure SGX VMs, build with the Azure DCAP provider:
+
+```bash
+docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
+```
+
+#### Run on a Generic SGX Host
 Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the
-`taws` container for SGX quote generation.
+`taws:generic` container for SGX quote generation.
 
 ```bash
 docker run --rm -it \
@@ -126,22 +138,27 @@ docker run --rm -it \
   --device /dev/sgx_provision \
   -p 8181:8181 \
   -e PCCS_API_KEY=<your-intel-pcs-api-key> \
-  taws
-```
-
-If your SGX driver exposes devices under `/dev/sgx/`, pass those device paths:
-
-```bash
-docker run --rm -it \
-  --device /dev/sgx/enclave \
-  --device /dev/sgx/provision \
-  -p 8181:8181 \
-  -e PCCS_API_KEY=<your-intel-pcs-api-key> \
-  taws
+  taws:generic
 ```
 
 Optional runtime settings can be passed with additional `-e` flags:
 `PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, and `TAWS_TAM_URL`.
+
+#### Run on an Azure SGX VM
+Run the Azure image with host networking and the Azure SGX device paths. In this
+mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container
+PCCS/AESM services.
+
+```bash
+docker run --rm -it \
+  --network host \
+  --device /dev/sgx_enclave:/dev/sgx_enclave \
+  --device /dev/sgx_provision:/dev/sgx_provision \
+  taws:azure
+```
+
+`TAWS_WEB_ADDR` and `TAWS_TAM_URL` can be overridden with `-e` flags in both
+Docker modes.
 
 ### Attestation Configuration
 By default, builds use `SGX_EVIDENCE=1` and generate SGX DCAP Evidence for the `QueryResponse` attestation payload. 
