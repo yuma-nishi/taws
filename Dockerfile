@@ -10,7 +10,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG GO_VERSION=1.22.12
 ARG AZ_DCAP_CLIENT_VERSION=1.13.1
 ARG NODE_MAJOR=24
-ARG TAWS_DCAP_PROVIDER=generic
+ARG TAWS_DCAP_PROVIDER
 
 USER root
 
@@ -51,7 +51,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN if [ "${TAWS_DCAP_PROVIDER}" = "generic" ]; then \
+RUN if [ "${TAWS_DCAP_PROVIDER}" = "azure" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends nlohmann-json3-dev; \
+    else \
         apt-get update \
         && apt-get install -y --no-install-recommends libsgx-aesm-quote-ex-plugin \
         && curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /tmp/nodesource_setup.sh \
@@ -59,12 +62,6 @@ RUN if [ "${TAWS_DCAP_PROVIDER}" = "generic" ]; then \
         && apt-get update \
         && apt-get install -y --no-install-recommends nodejs \
         && rm -f /tmp/nodesource_setup.sh; \
-    elif [ "${TAWS_DCAP_PROVIDER}" = "azure" ]; then \
-        apt-get update \
-        && apt-get install -y --no-install-recommends nlohmann-json3-dev; \
-    else \
-        echo "unsupported TAWS_DCAP_PROVIDER: ${TAWS_DCAP_PROVIDER}" >&2; \
-        exit 1; \
     fi \
     && rm -rf /var/lib/apt/lists/*
 
@@ -92,7 +89,16 @@ RUN bash -lc "set -euo pipefail \
     && source /opt/intel/sgxsdk/environment \
     && cd /work/taws/third_party/intel-dcap/QuoteGeneration \
     && ./download_prebuilt.sh \
-    && if [ \"${TAWS_DCAP_PROVIDER}\" = generic ]; then \
+    && if [ \"${TAWS_DCAP_PROVIDER}\" = azure ]; then \
+        BUILD_PLATFORM=docker make deb_sgx_pce_logic_pkg deb_sgx_qe3_logic_pkg deb_sgx_ae_qe3_pkg deb_sgx_ae_id_enclave_pkg deb_sgx_dcap_ql_pkg \
+        && dpkg -i --force-overwrite \
+        installer/linux/deb/libsgx-pce-logic/libsgx-pce-logic_*.deb \
+        installer/linux/deb/libsgx-qe3-logic/libsgx-qe3-logic_*.deb \
+        installer/linux/deb/libsgx-ae-qe3/libsgx-ae-qe3_*.deb \
+        installer/linux/deb/libsgx-ae-id-enclave/libsgx-ae-id-enclave_*.deb \
+        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql_*.deb \
+        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql-dev_*.deb; \
+    else \
         sed -i 's#grep -qE '\''docker|lxc'\'' /proc/1/cgroup#grep -qE '\''docker|lxc'\'' /proc/1/cgroup || [ -f /.dockerenv ]#' pccs/service/startup.sh \
         && sed -i 's/exit 5/exit 0/' pccs/service/startup.sh \
         && BUILD_PLATFORM=docker make deb_sgx_pce_logic_pkg deb_sgx_qe3_logic_pkg deb_sgx_ae_qe3_pkg deb_sgx_ae_id_enclave_pkg deb_sgx_dcap_ql_pkg deb_sgx_dcap_default_qpl_pkg deb_sgx_dcap_pccs_pkg \
@@ -108,18 +114,6 @@ RUN bash -lc "set -euo pipefail \
         pccs/build_infrastructure/installer/linux/deb/sgx-dcap-pccs/sgx-dcap-pccs_*.deb \
         && cd /opt/intel/sgx-dcap-pccs \
         && npm ci --omit=dev; \
-    elif [ \"${TAWS_DCAP_PROVIDER}\" = azure ]; then \
-        BUILD_PLATFORM=docker make deb_sgx_pce_logic_pkg deb_sgx_qe3_logic_pkg deb_sgx_ae_qe3_pkg deb_sgx_ae_id_enclave_pkg deb_sgx_dcap_ql_pkg \
-        && dpkg -i --force-overwrite \
-        installer/linux/deb/libsgx-pce-logic/libsgx-pce-logic_*.deb \
-        installer/linux/deb/libsgx-qe3-logic/libsgx-qe3-logic_*.deb \
-        installer/linux/deb/libsgx-ae-qe3/libsgx-ae-qe3_*.deb \
-        installer/linux/deb/libsgx-ae-id-enclave/libsgx-ae-id-enclave_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql-dev_*.deb; \
-    else \
-        echo \"unsupported TAWS_DCAP_PROVIDER: ${TAWS_DCAP_PROVIDER}\" >&2; \
-        exit 1; \
     fi \
     && cd /work/taws/scripts \
     && ./build_third_party.sh \

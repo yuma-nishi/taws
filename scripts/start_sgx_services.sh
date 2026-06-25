@@ -14,7 +14,7 @@ QCNL_CONFIG=/etc/sgx_default_qcnl.conf
 AESM_HOME=
 PCCS_PID=
 AESM_PID=
-TAWS_DCAP_PROVIDER="${TAWS_DCAP_PROVIDER:-generic}"
+TAWS_DCAP_PROVIDER="${TAWS_DCAP_PROVIDER:-}"
 
 cleanup() {
     if [ -n "${AESM_PID}" ] && kill -0 "${AESM_PID}" >/dev/null 2>&1; then
@@ -143,23 +143,16 @@ start_aesm() {
 }
 
 main() {
-    case "${TAWS_DCAP_PROVIDER}" in
-        generic)
-            configure_pccs
-            configure_qcnl
-            detect_aesm_home
-            configure_aesm
-            start_pccs
-            start_aesm
-            ;;
-        azure)
-            unset SGX_AESM_ADDR
-            ;;
-        *)
-            echo "unsupported TAWS_DCAP_PROVIDER: ${TAWS_DCAP_PROVIDER}" >&2
-            return 1
-            ;;
-    esac
+    if [ "${TAWS_DCAP_PROVIDER}" = "azure" ]; then
+        unset SGX_AESM_ADDR
+    else
+        configure_pccs
+        configure_qcnl
+        detect_aesm_home
+        configure_aesm
+        start_pccs
+        start_aesm
+    fi
 
     exec "$@"
 }

@@ -96,13 +96,11 @@ If you need a simulation-only development build, use `make SGX_MODE=SIM` instead
 SGX DCAP evidence and PCCS are hardware-mode requirements.
 
 ### Docker Workflow
-The Docker workflow builds and runs TAWS inside a single container. The same
-`Dockerfile` supports two DCAP providers:
-
-- `generic` (default): Intel DCAP default QPL, PCCS, and AESM run in the
-  container.
-- `azure`: Azure DCAP Client is installed for Azure SGX VMs, and PCCS/AESM are
-  not started in the container.
+The Docker workflow builds and runs TAWS inside a single container. By default,
+the image uses the Intel DCAP default QPL with PCCS and AESM running in the
+container. Setting `TAWS_DCAP_PROVIDER=azure` is the only special case: it
+installs the Azure DCAP Client for Azure SGX VMs and skips container PCCS/AESM
+startup.
 
 #### Requirements
 - Docker
@@ -115,11 +113,12 @@ cd scripts/
 ./prepare_sgx_base_image.sh
 ```
 
-Build the TAWS Docker image:
+Build the default TAWS Docker image. No `--build-arg` is required for the
+container PCCS/AESM configuration:
 
 ```bash
 cd ..
-docker build -t taws:generic .
+docker build -t taws:pccs .
 ```
 
 For Azure SGX VMs, build with the Azure DCAP provider:
@@ -128,9 +127,9 @@ For Azure SGX VMs, build with the Azure DCAP provider:
 docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
 ```
 
-#### Run on a Generic SGX Host
+#### Run on a PCCS-backed SGX Host
 Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the
-`taws:generic` container for SGX quote generation.
+`taws:pccs` container for SGX quote generation.
 
 ```bash
 docker run --rm -it \
@@ -139,7 +138,7 @@ docker run --rm -it \
   --device /dev/sgx_provision \
   -p 8181:8181 \
   -e PCCS_API_KEY=<your-intel-pcs-api-key> \
-  taws:generic
+  taws:pccs
 ```
 
 Optional runtime settings can be passed with additional `-e` flags:
