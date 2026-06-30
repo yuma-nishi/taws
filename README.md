@@ -137,7 +137,7 @@ Build and run TAWS directly on the SGX host.
 - Ubuntu 24.04 LTS (tested environment)
 - Intel SGX hardware and host SGX driver/kernel support with `/dev/sgx_enclave` and `/dev/sgx_provision`
 
-For the native workflow, set up the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and the DCAP quote generation components described in Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation. The Ubuntu 24.04 package list below covers the common build and SGX development packages used by this repository.
+For the native workflow, set up the Intel SGX SDK/PSW from the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and the DCAP quote generation components described in Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation. The Ubuntu 24.04 package list below covers the common build and SGX development packages used by this repository; platform-specific quote provider setup follows in the Azure and PCCS-backed sections.
 
 For Ubuntu 24.04, configure the Intel SGX apt repository first, then install the packages:
 
@@ -157,22 +157,15 @@ Other Linux distributions may work but have not been verified.
 #### Run natively on an Azure SGX VM
 Use this path when TAWS runs directly on an Azure SGX VM.
 
-Install the Intel SGX SDK, PSW, DCAP runtime components, and DCAP quote library development headers. Build and install the Azure DCAP Client from [`microsoft/Azure-DCAP-Client`](https://github.com/microsoft/Azure-DCAP-Client).
-
-For the Azure DCAP Client source build, install its JSON dependency:
-
-```bash
-sudo apt-get install -y nlohmann-json3-dev
-```
+Build and install the Azure DCAP Client from [`microsoft/Azure-DCAP-Client`](https://github.com/microsoft/Azure-DCAP-Client) as the Azure quote provider integration for the native workflow.
 
 A local PCCS instance and an Intel PCS API key are normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
 
-After the Azure SGX software stack is configured, use the common build and run commands below.
+After the Azure DCAP Client is configured, use the common build and run commands below.
 
 #### Run natively on a PCCS-backed SGX Host
 Use this path when TAWS runs directly on a non-Azure SGX hardware host backed by PCCS.
 
-Install the Intel SGX SDK, PSW, DCAP runtime components, DCAP quote library development headers, Intel DCAP default QPL, AESM, and PCCS.
 PCCS requires an Intel PCS API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
 For the PCCS-backed native path, also install the default QPL development package and AESM quote-ex plugin after configuring the Intel SGX apt repository:
