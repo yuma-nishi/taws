@@ -137,7 +137,9 @@ Build and run TAWS directly on the SGX host.
 - Ubuntu 24.04 LTS (tested environment)
 - Intel SGX hardware and host SGX driver/kernel support with `/dev/sgx_enclave` and `/dev/sgx_provision`
 
-For Ubuntu 24.04, configure the Intel SGX apt repository first, then install the common build and SGX development packages used by the Docker image:
+For the native workflow, set up the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and the DCAP quote generation components described in Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation. The Ubuntu 24.04 package list below covers the common build and SGX development packages used by this repository.
+
+For Ubuntu 24.04, configure the Intel SGX apt repository first, then install the packages:
 
 ```bash
 sudo apt-get update
@@ -184,8 +186,6 @@ If PCCS runs locally on the host, install `nodejs` and `npm` for the PCCS servic
 After installing PCCS, configure it according to the Intel PCCS service README: [`confidential-computing.tee.dcap.pccs/service/README.md`](https://github.com/intel/confidential-computing.tee.dcap.pccs/blob/main/service/README.md).
 
 After AESM and PCCS are ready, use the common build and run commands below.
-
-For native DCAP package details, see the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
 
 #### Common Build and Run
 
