@@ -28,7 +28,8 @@ By combining this SGX-based TEEP Agent with the corresponding TAM and Verifier, 
 │   ├── 📁 t_cose
 │   ├── 📁 intel-sgx-ssl
 │   ├── 📁 wasm-micro-runtime
-│   └── 📁 intel-dcap-pccs
+│   ├── 📁 intel-dcap-pccs
+│   └── 📁 intel-dcap
 ├── 📄 Makefile
 ├── 📄 Makefile.test
 ├── 📄 Makefile.sgx.test
@@ -39,10 +40,11 @@ The TEE Device uses the following libraries.
 * [libcsuit](https://github.com/kentakayama/libcsuit)
 * [libteep](https://github.com/kentakayama/libteep)
 * [QCBOR](https://github.com/laurencelundblade/QCBOR)
-* [t_cose](https://github.com/laurencelundblade/t_cose)
+* [t_cose](https://github.com/kentakayama/t_cose)
 * [intel-sgx-ssl](https://github.com/intel/intel-sgx-ssl)
 * [wasm-micro-runtime](https://github.com/bytecodealliance/wasm-micro-runtime)
 * [intel-dcap-pccs](https://github.com/intel/confidential-computing.tee.dcap.pccs)
+* [intel-dcap](https://github.com/intel/confidential-computing.tee.dcap)
 
 
 
@@ -60,64 +62,30 @@ cd taws
 ### Prerequisites
 
 TAWS supports both native and Docker-based workflows.
-Both workflows require an Intel SGX hardware-mode environment that supports DCAP quote generation.
+Hardware-mode runs require an Intel SGX host.
 
-Before building or running TAWS, configure the Intel SGX software stack and DCAP infrastructure:
-- Intel SGX SDK, PSW, and DCAP components 
-  - See the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
-- PCCS (Provisioning Certificate Caching Service)
-  - See [`third_party/intel-dcap-pccs/service/README.md`](./third_party/intel-dcap-pccs/service/README.md). 
-  - You will need an Intel PCS (Provisioning Certification Service) API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
-
-### Native Workflow
-Build and run TAWS directly on the SGX host.
-
-#### Requirements
-- Go 1.22 or later
-- Ubuntu 24.04 LTS (tested environment)
-
-Other Linux distributions may work but have not been verified.
-
-#### Build and Run
-
-```bash
-# install third_party dependencies
-cd scripts/ && ./build_third_party.sh
-
-# build for SGX hardware mode
-cd .. && make SGX_MODE=HW SGX_DEBUG=1
-
-# run the taws web server on the host
-./build/go/taws web
-```
-For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).
-
-If you need a simulation-only development build, use `make SGX_MODE=SIM` instead. 
-SGX DCAP evidence and PCCS are hardware-mode requirements.
+Before building or running TAWS, make sure the target environment has:
+- Intel SGX hardware for hardware-mode execution
+- Host [SGX driver/kernel](https://github.com/intel/linux-sgx-driver) support with `/dev/sgx_enclave` and `/dev/sgx_provision`
 
 ### Docker Workflow
-The Docker workflow builds and runs TAWS inside a single container. By default,
-the image uses the Intel DCAP default QPL with PCCS and AESM running in the
-container. Setting `TAWS_DCAP_PROVIDER=azure` is the only special case: it
-installs the Azure DCAP Client for Azure SGX VMs and skips container PCCS/AESM
-startup.
+The Docker workflow is the shortest path to a runnable TAWS Web UI. It builds TAWS inside a single container and starts `./build/go/taws web` through the container entrypoint.
 
 #### Requirements
 - Docker
+- Intel SGX hardware and host SGX driver/kernel support for hardware-mode execution
+- Host SGX device nodes at `/dev/sgx_enclave` and `/dev/sgx_provision`
 
 #### Build
-Prepare the local `sgx_sample_deb` base image:
+Prepare the local Intel SGX SDK base image. This script builds the `sgx_sample_deb` Docker image used by the TAWS `Dockerfile`.
 
 ```bash
-cd scripts/
-./prepare_sgx_base_image.sh
+./scripts/prepare_sgx_base_image.sh
 ```
 
-Build the default TAWS Docker image. No `--build-arg` is required for the
-container PCCS/AESM configuration:
+Build the default TAWS Docker image for a PCCS-backed host. No `--build-arg` is required for the container PCCS/AESM configuration:
 
 ```bash
-cd ..
 docker build -t taws:pccs .
 ```
 
@@ -128,15 +96,16 @@ docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
 ```
 
 #### Run on a PCCS-backed SGX Host
-Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the
-`taws:pccs` container for SGX quote generation.
+Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the `taws:pccs` container for SGX quote generation.
+The `--device` flags pass the host SGX device nodes into the container.
+
+`PCCS_API_KEY` is required in this mode. Obtain it from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
 
 ```bash
 docker run --rm -it \
   --network host \
-  --device /dev/sgx_enclave \
-  --device /dev/sgx_provision \
-  -p 8181:8181 \
+  --device /dev/sgx_enclave:/dev/sgx_enclave \
+  --device /dev/sgx_provision:/dev/sgx_provision \
   -e PCCS_API_KEY=<your-intel-pcs-api-key> \
   taws:pccs
 ```
@@ -145,9 +114,10 @@ Optional runtime settings can be passed with additional `-e` flags:
 `PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, and `TAWS_TAM_URL`.
 
 #### Run on an Azure SGX VM
-Run the Azure image with host networking and the Azure SGX device paths. In this
-mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container
-PCCS/AESM services.
+Run the Azure image with host networking and the Azure SGX device paths. In this mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container PCCS/AESM services.
+The `--device` flags pass the Azure VM's host SGX device nodes into the container.
+
+An Intel PCS API key is normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
 
 ```bash
 docker run --rm -it \
@@ -157,8 +127,85 @@ docker run --rm -it \
   taws:azure
 ```
 
-`TAWS_WEB_ADDR` and `TAWS_TAM_URL` can be overridden with `-e` flags in both
-Docker modes.
+`TAWS_WEB_ADDR` and `TAWS_TAM_URL` can be overridden with `-e` flags in both Docker modes. By default, the container listens on `0.0.0.0:8181` and uses `http://localhost:8080/tam` as the TAM URL.
+
+### Native Workflow
+Build and run TAWS directly on the SGX host.
+
+#### Requirements
+- Go 1.22 or later
+- Ubuntu 24.04 LTS (tested environment)
+- Intel SGX hardware and host SGX driver/kernel support with `/dev/sgx_enclave` and `/dev/sgx_provision`
+
+For Ubuntu 24.04, configure the Intel SGX apt repository first, then install the common build and SGX development packages used by the Docker image:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  ca-certificates cmake curl gcc g++ git gnupg lsb-release make openssl perl \
+  pkgconf build-essential libboost-dev libboost-system-dev libboost-thread-dev \
+  libcurl4-openssl-dev libprotobuf-c-dev libssl-dev protobuf-c-compiler \
+  protobuf-compiler python-is-python3 wget zip \
+  libsgx-ae-pce libsgx-enclave-common libsgx-headers \
+  libsgx-dcap-ql libsgx-dcap-ql-dev
+```
+
+Other Linux distributions may work but have not been verified.
+
+#### Run natively on an Azure SGX VM
+Use this path when TAWS runs directly on an Azure SGX VM.
+
+Install the Intel SGX SDK, PSW, DCAP runtime components, and DCAP quote library development headers. Build and install the Azure DCAP Client from [`microsoft/Azure-DCAP-Client`](https://github.com/microsoft/Azure-DCAP-Client).
+
+For the Azure DCAP Client source build, install its JSON dependency:
+
+```bash
+sudo apt-get install -y nlohmann-json3-dev
+```
+
+A local PCCS instance and an Intel PCS API key are normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
+
+After the Azure SGX software stack is configured, use the common build and run commands below.
+
+#### Run natively on a PCCS-backed SGX Host
+Use this path when TAWS runs directly on a non-Azure SGX hardware host backed by PCCS.
+
+Install the Intel SGX SDK, PSW, DCAP runtime components, DCAP quote library development headers, Intel DCAP default QPL, AESM, and PCCS.
+PCCS requires an Intel PCS API key from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
+
+For the PCCS-backed native path, also install the default QPL development package and AESM quote-ex plugin after configuring the Intel SGX apt repository:
+
+```bash
+sudo apt-get install -y libsgx-dcap-default-qpl libsgx-dcap-default-qpl-dev libsgx-aesm-quote-ex-plugin
+```
+
+If PCCS runs locally on the host, install `nodejs` and `npm` for the PCCS service.
+
+After installing PCCS, configure it according to the Intel PCCS service README: [`confidential-computing.tee.dcap.pccs/service/README.md`](https://github.com/intel/confidential-computing.tee.dcap.pccs/blob/main/service/README.md).
+
+After AESM and PCCS are ready, use the common build and run commands below.
+
+For native DCAP package details, see the [Intel SGX Linux software stack](https://github.com/intel/confidential-computing.sgx) and Intel's [QuoteGeneration](https://github.com/intel/confidential-computing.tee.dcap/tree/main/QuoteGeneration) documentation.
+
+#### Common Build and Run
+
+```bash
+# load SGX SDK environment variables for sgx_edger8r, sgx_sign, and libraries
+source /opt/intel/sgxsdk/environment
+
+# install third_party dependencies
+./scripts/build_third_party.sh
+
+# build for SGX hardware mode
+make SGX_MODE=HW SGX_DEBUG=1
+
+# run the taws web server on the host
+./build/go/taws web
+```
+For Web Server usage (with diagram), CLI usage details, and full options, see [User Manual](./doc/USER_MANUAL.md) (especially [Web Server](./doc/USER_MANUAL.md#web-server)).
+
+If you need a simulation-only development build, use `make SGX_MODE=SIM` instead.
+SGX DCAP evidence, PCCS, AESM, and Azure DCAP Client setup are hardware-mode requirements and are not needed for simulation-only development builds.
 
 ### Attestation Configuration
 By default, builds use `SGX_EVIDENCE=1` and generate SGX DCAP Evidence for the `QueryResponse` attestation payload. 
