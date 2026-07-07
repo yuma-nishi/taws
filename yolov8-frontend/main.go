@@ -131,7 +131,7 @@ func runCLI(args []string) {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, `Usage:
+	fmt.Fprint(os.Stderr, `Usage:
   attester web [--addr ADDR] [--wapp NAME] [--func NAME] [--keygen yes|no] [--max-output BYTES] [--url URL] [--log-level error|info|debug]
   attester cli [--keygen yes|no] [--log-level error|info|debug]
 `)
@@ -151,7 +151,7 @@ func parseLogLevel(value string) (LogLevel, error) {
 }
 
 func printCLIUsage() {
-	fmt.Fprintln(os.Stderr, `cli commands:
+	fmt.Fprint(os.Stderr, `cli commands:
   install [--url URL] [--wapp NAME]
   detector [--wapp NAME] [--func NAME] [--max-output BYTES] <input.jpg> [output.jpg]
   help
