@@ -107,11 +107,11 @@ docker run --rm -it \
   --device /dev/sgx_enclave:/dev/sgx_enclave \
   --device /dev/sgx_provision:/dev/sgx_provision \
   -e PCCS_API_KEY=<your-intel-pcs-api-key> \
+  -e TAWS_LOG_LEVEL=info \
   taws:pccs
 ```
-
 Optional runtime settings can be passed with additional `-e` flags:
-`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, and `TAWS_TAM_URL`.
+`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL`.Supported log levels are `error`, `info`, and `debug`.
 
 #### Run on an Azure SGX VM
 Run the Azure image with host networking and the Azure SGX device paths. In this mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container PCCS/AESM services.
@@ -124,10 +124,12 @@ docker run --rm -it \
   --network host \
   --device /dev/sgx_enclave:/dev/sgx_enclave \
   --device /dev/sgx_provision:/dev/sgx_provision \
+  -e AZDCAP_DEBUG_LOG_LEVEL=ERROR \
+  -e TAWS_LOG_LEVEL=info \
   taws:azure
 ```
 
-`TAWS_WEB_ADDR` and `TAWS_TAM_URL` can be overridden with `-e` flags in both Docker modes. By default, the container listens on `0.0.0.0:8181` and uses `http://localhost:8080/tam` as the TAM URL.
+`TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL` can be overridden with `-e` flags in both Docker modes. By default, the container listens on `0.0.0.0:8181`, uses `http://localhost:8080/tam` as the TAM URL, and runs with `TAWS_LOG_LEVEL=info`. Supported log levels are `error`, `info`, and `debug`.
 
 ### Native Workflow
 Build and run TAWS directly on the SGX host.

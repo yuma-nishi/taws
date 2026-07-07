@@ -6,6 +6,7 @@
 
 #include "teep/teep_cose.h"
 #include "teep_http_client.h"
+#include "taws_logger.h"
 
 #include <string.h>
 
@@ -30,7 +31,9 @@ static size_t write_callback(void *recv_buffer_ptr,
         ctx->out.len += copy_size;
     }
     else{
-        printf("write_callback : buffer overflow. remain_size =%ld < recv_size =%ld\n", remain_size, recv_size);
+        TAWS_LOG_ERROR("HTTP response buffer overflow: remain_size=%zu recv_size=%zu",
+                       remain_size,
+                       recv_size);
     }
 
     return recv_size;
@@ -57,10 +60,9 @@ int teep_send_http_post(const char *url,
     out_recv_buffer->len = 0;
 
     // Set parameter.
-    printf("[TEEP Broker] > HTTP POST %s\n", url);
     curl = curl_easy_init();
     if (curl == NULL) {
-        printf("teep_send_post_request : curl_easy_init : Fail.\n");
+        TAWS_LOG_ERROR("curl_easy_init failed");
         return TEEP_ERR_UNEXPECTED_ERROR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -89,7 +91,7 @@ int teep_send_http_post(const char *url,
     do{
         curl_result = curl_easy_perform(curl);
         if (curl_result != CURLE_OK) {
-            printf("teep_send_post_request : curl_easy_perform : Fail. (%s)\n",
+            TAWS_LOG_ERROR("curl_easy_perform failed: %s",
                    curl_easy_strerror(curl_result));
             result = 1;
             break;
@@ -103,7 +105,7 @@ int teep_send_http_post(const char *url,
             break;
         }
         if (curl_result != CURLE_OK || response_code < 0 || response_code != 200) {
-            printf("HTTP status: %ld\n", (long)response_code);
+            TAWS_LOG_ERROR("HTTP status: %ld", (long)response_code);
             result = 2;
             break;
         }

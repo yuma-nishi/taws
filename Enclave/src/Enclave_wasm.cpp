@@ -145,6 +145,7 @@ ecall_invoke_wasm(const char *wapp_name,
         PRINT_DEBUG_LOG("Ecall_InvokeWasmBytes: invalid arguments (wapp_name/func_name/output).\n");
         return ECALL_WASM_RESULT_INVALID_ARGUMENT;
     }
+    TAWS_LOG_INFO("WASM invoke started: %s.%s", wapp_name, func_name);
 
     ecall_wasm_result_t ensure_ret = ensure_wamr_running(wapp_name);
     if (ensure_ret != ECALL_WASM_RESULT_OK) {
@@ -256,6 +257,7 @@ ecall_invoke_wasm(const char *wapp_name,
     }
     memcpy(output, native_out, actual_len_buf);
     *actual_len = actual_len_buf;
+    TAWS_LOG_INFO("WASM invoke finished: output_len=%u", actual_len_buf);
 
     wasm_runtime_module_free(loaded_module->module_instance, wasm_out_ptr);
     if (wasm_in_ptr) {

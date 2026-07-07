@@ -118,7 +118,7 @@ int main(void)
                                  k_wapp_name,
                                  send_buf,
                                  sizeof(send_buf),
-                                 &actual_len) == 0);
+                                 &actual_len) == ECALL_PROCESS_TEEP_RESULT_QUERY_RESPONSE);
     assert(actual_len > 0);
 
     // Step 2: update0 -> initial clean install.
@@ -127,7 +127,7 @@ int main(void)
                                  k_wapp_name,
                                  send_buf,
                                  sizeof(send_buf),
-                                 &actual_len) == 0);
+                                 &actual_len) == ECALL_PROCESS_TEEP_RESULT_SUCCESS);
     assert(actual_len > 0);
     assert(tc_manager_record_count() == 1);
     const manifest_record_t *record_after_update0 = tc_manager_find_record_by_wappname(k_wapp_name);
@@ -143,7 +143,7 @@ int main(void)
                                  k_wapp_name,
                                  send_buf,
                                  sizeof(send_buf),
-                                 &actual_len) == 0);
+                                 &actual_len) == ECALL_PROCESS_TEEP_RESULT_QUERY_RESPONSE);
     assert(actual_len > 0);
 
     // Step 4: update1 -> version update keeps one active record.
@@ -152,7 +152,7 @@ int main(void)
                                  k_wapp_name,
                                  send_buf,
                                  sizeof(send_buf),
-                                 &actual_len) == 0);
+                                 &actual_len) == ECALL_PROCESS_TEEP_RESULT_SUCCESS);
     assert(actual_len > 0);
     assert(tc_manager_record_count() == 1);
     const manifest_record_t *record_after_update1 = tc_manager_find_record_by_wappname(k_wapp_name);

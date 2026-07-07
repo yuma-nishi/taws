@@ -194,11 +194,12 @@ extern "C" teep_err_t ecall_teep_generate_esp256_key_pair() {
     /* setting tam_esp256_public_key */
     ret = teep_key_init_esp256_public_key(tam_esp256_public_key, NULLUsefulBufC, &tam_verify.key);
     if (ret != TEEP_SUCCESS) {
-        PRINT_DEBUG_LOG("main : Failed to parse t_cose public key. %s(%d)\n", teep_err_to_str(ret), ret);
+        PRINT_DEBUG_LOG("Failed to parse t_cose public key. %s(%d)\n", teep_err_to_str(ret), ret);
         goto err;
     }
     tam_verify.cose_tag = CBOR_TAG_COSE_SIGN1;
     g_key_state = TEEP_KEY_READY;
+    TAWS_LOG_INFO("TEEP Agent key pair generated");
 
 
 
@@ -258,6 +259,7 @@ extern "C" teep_err_t ecall_teep_set_esp256_key(){
     }
     tam_verify.cose_tag = CBOR_TAG_COSE_SIGN1;
     g_key_state = TEEP_KEY_READY;
+    TAWS_LOG_INFO("built-in TEEP Agent key pair set");
 
     return result;
 }

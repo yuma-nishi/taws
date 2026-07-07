@@ -74,7 +74,8 @@ $(SUIT_CONDITION_CALLBACK_TEST_BIN): $(SUIT_CONDITION_CALLBACK_TEST_SRCS)
 
 
 ENCLAVE_WASM_INVOKE_TEST_SRCS := Enclave/tests/enclave_wasm_invoke_test.cpp \
-	Enclave/src/Enclave_wasm.cpp
+	Enclave/src/Enclave_wasm.cpp \
+	App/src/taws_logger.cpp
 
 enclave-wasm-invoke-test: $(ENCLAVE_WASM_INVOKE_TEST_BIN)
 	$(ENCLAVE_WASM_INVOKE_TEST_BIN)

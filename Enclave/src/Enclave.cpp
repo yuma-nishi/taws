@@ -50,3 +50,10 @@ int printf(const char *fmt, ...)
     ocall_print_string(buf);
     return 0;
 }
+
+int putchar(int c)
+{
+    char buf[2] = {(char)c, '\0'};
+    ocall_print_string(buf);
+    return c;
+}

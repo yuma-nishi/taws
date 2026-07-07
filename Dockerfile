@@ -127,9 +127,10 @@ ENV SGX_MODE=HW
 ENV TAWS_DCAP_PROVIDER=${TAWS_DCAP_PROVIDER}
 ENV TAWS_WEB_ADDR=0.0.0.0:8181
 ENV TAWS_TAM_URL=http://localhost:8080/tam
+ENV TAWS_LOG_LEVEL=info
 ENV PCCS_CACHING_MODE=LAZY
 
 EXPOSE 8181
 
 ENTRYPOINT ["/usr/local/bin/start-sgx-services"]
-CMD ["bash", "-lc", "source /opt/intel/sgxsdk/environment && cd /work/taws && exec ./build/go/taws web --addr \"${TAWS_WEB_ADDR}\" --url \"${TAWS_TAM_URL}\""]
+CMD ["bash", "-lc", "source /opt/intel/sgxsdk/environment && cd /work/taws && exec ./build/go/taws web --addr \"${TAWS_WEB_ADDR}\" --url \"${TAWS_TAM_URL}\" --log-level \"${TAWS_LOG_LEVEL}\""]

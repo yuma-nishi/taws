@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 int attester_init(const char *keygen_mode);
+int attester_set_log_level(int level);
 teep_session_result_t attester_install(const char *tam_url, const char *app_name);
 int attester_invoke_wasm(const char *wapp_name,
                                const char *func_name,

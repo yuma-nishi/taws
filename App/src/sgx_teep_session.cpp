@@ -16,6 +16,7 @@
 #include "ecall_process_teep_result.h"
 #include "teep_session_result.h"
 #include "teep_buffer_sizes.h"
+#include "taws_logger.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,53 @@ extern "C" {
 
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t global_eid = 0;
+
+typedef enum {
+    TEEP_SEND_LOG_INITIAL_REQUEST,
+    TEEP_SEND_LOG_QUERY_RESPONSE,
+    TEEP_SEND_LOG_QUERY_RESPONSE_WITH_ATTESTATION,
+    TEEP_SEND_LOG_SUCCESS,
+    TEEP_SEND_LOG_ERROR
+} teep_send_log_type_t;
+
+static void log_teep_send(teep_send_log_type_t type, size_t cose_size)
+{
+    switch (type) {
+        case TEEP_SEND_LOG_INITIAL_REQUEST:
+            taws_log_teep_send("sending TEEP initial request: cose_size=%zu", cose_size);
+            break;
+        case TEEP_SEND_LOG_QUERY_RESPONSE:
+            taws_log_teep_send("sending TEEP QueryResponse: cose_size=%zu", cose_size);
+            break;
+        case TEEP_SEND_LOG_QUERY_RESPONSE_WITH_ATTESTATION:
+            taws_log_teep_send("sending TEEP QueryResponse with attestation: cose_size=%zu", cose_size);
+            break;
+        case TEEP_SEND_LOG_SUCCESS:
+            taws_log_teep_send("sending TEEP Success: cose_size=%zu", cose_size);
+            break;
+        case TEEP_SEND_LOG_ERROR:
+            taws_log_teep_send("sending TEEP Error: cose_size=%zu", cose_size);
+            break;
+    }
+}
+
+static teep_send_log_type_t send_log_type_from_ecall_result(ecall_process_teep_result_t result)
+{
+    switch (result) {
+        case ECALL_PROCESS_TEEP_RESULT_RESPONSE_IS_TEEP_ERROR:
+            return TEEP_SEND_LOG_ERROR;
+        case ECALL_PROCESS_TEEP_RESULT_DEVICE_ACTIVATION_FLOW:
+            return TEEP_SEND_LOG_QUERY_RESPONSE_WITH_ATTESTATION;
+        case ECALL_PROCESS_TEEP_RESULT_QUERY_RESPONSE:
+            return TEEP_SEND_LOG_QUERY_RESPONSE;
+        case ECALL_PROCESS_TEEP_RESULT_SUCCESS:
+            return TEEP_SEND_LOG_SUCCESS;
+        case ECALL_PROCESS_TEEP_RESULT_OK:
+        case ECALL_PROCESS_TEEP_RESULT_FATAL:
+            break;
+    }
+    return TEEP_SEND_LOG_SUCCESS;
+}
 
 typedef struct _sgx_errlist_t {
     sgx_status_t err;
@@ -135,15 +183,15 @@ void print_error_message(sgx_status_t ret)
     for (idx = 0; idx < ttl; idx++) {
         if (ret == sgx_errlist[idx].err) {
             if (sgx_errlist[idx].sug != NULL) {
-                printf("Info: %s\n", sgx_errlist[idx].sug);
+                TAWS_LOG_INFO("%s", sgx_errlist[idx].sug);
             }
-            printf("Error: %s\n", sgx_errlist[idx].msg);
+            TAWS_LOG_ERROR("%s", sgx_errlist[idx].msg);
             break;
         }
     }
 
     if (idx == ttl) {
-        printf("Error: Unexpected error occurred.\n");
+        TAWS_LOG_ERROR("Unexpected error occurred.");
     }
 }
 
@@ -162,6 +210,7 @@ int initialize_enclave(void)
         return -1;
     }
 
+    TAWS_LOG_INFO("enclave initialized");
     return 0;
 }
 
@@ -171,8 +220,7 @@ void ocall_print_string(const char *str)
     /* Proxy/Bridge will check the length and null-terminate
      * the input string to prevent buffer overflow.
      */
-    printf("%s", str);
-    fflush(stdout);
+    taws_log_print_enclave_ocall(str);
 }
 
 teep_session_result_t run_teep_session(const char *tam_url, const char *app_name)
@@ -184,9 +232,12 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
     cose_send_buf.len = 0; /* first message is NULL on teep over http */
     bool has_teep_error_response = false;
     bool in_device_activation_flow = false;
+    teep_send_log_type_t send_log_type = TEEP_SEND_LOG_INITIAL_REQUEST;
 
+    TAWS_LOG_INFO("TEEP install session started");
     while (1) {
         cbor_recv_buf.len = MAX_RECEIVE_BUFFER_SIZE;
+        log_teep_send(send_log_type, cose_send_buf.len);
         int result = teep_send_http_post(tam_url, UsefulBuf_Const(cose_send_buf), &cbor_recv_buf);
         if (result != 0) {
             return TEEP_SESSION_RESULT_HTTP_ERROR;
@@ -198,7 +249,7 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
 
         ecall_process_teep_result_t ret = ECALL_PROCESS_TEEP_RESULT_OK;
         size_t cose_send_len = MAX_SEND_BUFFER_SIZE;
-        printf("[TEEP Broker] ECall (send_capacity=%zu recv_len=%zu)\n",
+        TAWS_LOG_DEBUG("ECall ecall_process_message send_capacity=%zu recv_len=%zu",
                (size_t)MAX_SEND_BUFFER_SIZE,
                cbor_recv_buf.len);
         sgx_status_t sgx_ret = ecall_process_message(global_eid,
@@ -214,7 +265,7 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
             return TEEP_SESSION_RESULT_FATAL;
         }
         if (ret == ECALL_PROCESS_TEEP_RESULT_FATAL) {
-            printf("run_teep_session : ecall_process_message failed (%d)\n", ret);
+            TAWS_LOG_ERROR("ecall_process_message failed: %d", ret);
             return TEEP_SESSION_RESULT_FATAL;
         }
         if (ret == ECALL_PROCESS_TEEP_RESULT_RESPONSE_IS_TEEP_ERROR) {
@@ -224,15 +275,19 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
             in_device_activation_flow = true;
         }
         cose_send_buf.len = cose_send_len;
+        send_log_type = send_log_type_from_ecall_result(ret);
 
         sleep(1);
     }
 
     if (has_teep_error_response) {
+        TAWS_LOG_ERROR("TEEP install session finished with TEEP error response");
         return TEEP_SESSION_RESULT_TEEP_ERROR_RESPONSE;
     }
     if (in_device_activation_flow) {
+        TAWS_LOG_INFO("TEEP install session finished: device activation flow");
         return TEEP_SESSION_RESULT_OK_DEVICE_ACTIVATED;
     }
+    TAWS_LOG_INFO("TEEP install session finished");
     return TEEP_SESSION_RESULT_OK;
 }

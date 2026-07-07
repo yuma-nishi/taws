@@ -24,6 +24,7 @@ type serverConfig struct {
 	maxOut   int
 	keygen   string
 	tamURL   string
+	logLevel LogLevel
 }
 
 type detectorServer struct {
@@ -58,6 +59,12 @@ func (s *detectorServer) runWorker() {
 	defer runtime.UnlockOSThread()
 
 	att := &Attester{}
+	if err := att.SetLogLevel(s.cfg.logLevel); err != nil {
+		for req := range s.reqCh {
+			req.resp <- detectResponse{err: err}
+		}
+		return
+	}
 	if err := att.InitializeEnclave(s.cfg.keygen); err != nil {
 		for req := range s.reqCh {
 			req.resp <- detectResponse{err: err}
@@ -161,6 +168,11 @@ func (s *detectorServer) handleTEEP(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	att := &Attester{}
+	if err := att.SetLogLevel(s.cfg.logLevel); err != nil {
+		http.Error(w, "install failed", http.StatusInternalServerError)
+		log.Println("install failed")
+		return
+	}
 	if err := att.InitializeEnclave(s.cfg.keygen); err != nil {
 		http.Error(w, "install failed", http.StatusInternalServerError)
 		log.Println("install failed")
