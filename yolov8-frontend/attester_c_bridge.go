@@ -11,6 +11,7 @@ package main
 #cgo CFLAGS: -I${SRCDIR}/../common
 #include <stdlib.h>
 #include "attester_api.h"
+#include "taws_logger.h"
 */
 import "C"
 
@@ -21,7 +22,15 @@ import (
 
 type Attester struct{}
 
+type LogLevel int32
+
 type TeepSessionResult int32
+
+const (
+	LogLevelError = LogLevel(C.TAWS_LOG_LEVEL_ERROR)
+	LogLevelInfo  = LogLevel(C.TAWS_LOG_LEVEL_INFO)
+	LogLevelDebug = LogLevel(C.TAWS_LOG_LEVEL_DEBUG)
+)
 
 const (
 	TeepSessionResultOK                = TeepSessionResult(C.TEEP_SESSION_RESULT_OK)
@@ -30,6 +39,13 @@ const (
 	TeepSessionResultHTTPError         = TeepSessionResult(C.TEEP_SESSION_RESULT_HTTP_ERROR)
 	TeepSessionResultOKDeviceActivated = TeepSessionResult(C.TEEP_SESSION_RESULT_OK_DEVICE_ACTIVATED)
 )
+
+func (a *Attester) SetLogLevel(level LogLevel) error {
+	if ret := C.attester_set_log_level(C.int(level)); ret != 0 {
+		return errors.New("attester_set_log_level failed")
+	}
+	return nil
+}
 
 func (r TeepSessionResult) Error() string {
 	switch r {

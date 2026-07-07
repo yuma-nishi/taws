@@ -25,6 +25,7 @@ const (
 	defaultFuncName = "detector_yolov8_wasm"
 	defaultAddr     = "127.0.0.1:8181"
 	defaultMaxOut   = 16 << 20
+	defaultLogLevel = "info"
 )
 
 func main() {
@@ -53,7 +54,12 @@ func runWeb(args []string) {
 	maxOut := fs.Int("max-output", defaultMaxOut, "max output bytes")
 	keygen := fs.String("keygen", defaultKeygen, "keygen mode: yes|no")
 	url := fs.String("url", defaultTamURL, "TAM URL")
+	logLevel := fs.String("log-level", defaultLogLevel, "log level: error|info|debug")
 	_ = fs.Parse(args)
+	parsedLogLevel, err := parseLogLevel(*logLevel)
+	if err != nil {
+		fatal(err)
+	}
 
 	runDetectorWeb(serverConfig{
 		addr:     *addr,
@@ -62,15 +68,24 @@ func runWeb(args []string) {
 		maxOut:   *maxOut,
 		keygen:   *keygen,
 		tamURL:   *url,
+		logLevel: parsedLogLevel,
 	})
 }
 
 func runCLI(args []string) {
 	fs := flag.NewFlagSet("cli", flag.ExitOnError)
 	keygen := fs.String("keygen", defaultKeygen, "keygen mode: yes|no")
+	logLevel := fs.String("log-level", defaultLogLevel, "log level: error|info|debug")
 	_ = fs.Parse(args)
+	parsedLogLevel, err := parseLogLevel(*logLevel)
+	if err != nil {
+		fatal(err)
+	}
 
 	att := &Attester{}
+	if err := att.SetLogLevel(parsedLogLevel); err != nil {
+		fatal(err)
+	}
 	if err := att.InitializeEnclave(*keygen); err != nil {
 		fatal(err)
 	}
@@ -117,9 +132,22 @@ func runCLI(args []string) {
 
 func printUsage() {
 	fmt.Fprintln(os.Stderr, `Usage:
-  attester web [--addr ADDR] [--wapp NAME] [--func NAME] [--keygen yes|no] [--max-output BYTES] [--url URL]
-  attester cli [--keygen yes|no]
+  attester web [--addr ADDR] [--wapp NAME] [--func NAME] [--keygen yes|no] [--max-output BYTES] [--url URL] [--log-level error|info|debug]
+  attester cli [--keygen yes|no] [--log-level error|info|debug]
 `)
+}
+
+func parseLogLevel(value string) (LogLevel, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "error":
+		return LogLevelError, nil
+	case "info":
+		return LogLevelInfo, nil
+	case "debug":
+		return LogLevelDebug, nil
+	default:
+		return LogLevelInfo, fmt.Errorf("invalid --log-level %q: expected error, info, or debug", value)
+	}
 }
 
 func printCLIUsage() {

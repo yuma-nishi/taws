@@ -370,14 +370,14 @@ teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
     /* Get QE target info for an application report addressed to the quoting enclave. */
     sgx_target_info_t qe_target_info = {};
     sgx_status_t ocall_ret = SGX_SUCCESS;
-    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get QE target info\n");
+    PRINT_DEBUG_LOG("DCAP: get QE target info");
     sgx_ret = ocall_get_qe_target_info(&ocall_ret, &qe_target_info);
     if (sgx_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_qe_target_info bridge failed 0x%04x\n", sgx_ret);
+        PRINT_DEBUG_LOG("DCAP: ocall_get_qe_target_info bridge failed 0x%04x", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_target_info failed 0x%04x\n", ocall_ret);
+        PRINT_DEBUG_LOG("DCAP: sgx_qe_get_target_info failed 0x%04x", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
 
@@ -389,41 +389,41 @@ teep_err_t create_evidence_dcap(const teep_query_request_t *query_request,
     }
 
     sgx_report_t report = {};
-    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: create report\n");
+    PRINT_DEBUG_LOG("DCAP: create report");
     sgx_ret = sgx_create_report(&qe_target_info, &report_data, &report);
     if (sgx_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_create_report failed 0x%04x\n", sgx_ret);
+        PRINT_DEBUG_LOG("DCAP: sgx_create_report failed 0x%04x", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
 
     uint32_t required_quote_size = 0;
     ocall_ret = SGX_SUCCESS;
-    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get quote size\n");
+    PRINT_DEBUG_LOG("DCAP: get quote size");
     sgx_ret = ocall_get_quote_size(&ocall_ret, &required_quote_size);
     if (sgx_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_quote_size bridge failed 0x%04x\n", sgx_ret);
+        PRINT_DEBUG_LOG("DCAP: ocall_get_quote_size bridge failed 0x%04x", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_quote_size failed 0x%04x\n", ocall_ret);
+        PRINT_DEBUG_LOG("DCAP: sgx_qe_get_quote_size failed 0x%04x", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
     if (required_quote_size == 0 || required_quote_size > buf.len) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: quote buffer too small (required=%u capacity=%zu)\n",
+        PRINT_DEBUG_LOG("DCAP: quote buffer too small (required=%u capacity=%zu)",
                         required_quote_size,
                         buf.len);
         return TEEP_ERR_NO_MEMORY;
     }
 
     ocall_ret = SGX_SUCCESS;
-    PRINT_DEBUG_LOG("[TEEP Agent] DCAP: get quote (%u bytes)\n", required_quote_size);
+    PRINT_DEBUG_LOG("DCAP: get quote (%u bytes)", required_quote_size);
     sgx_ret = ocall_get_quote(&ocall_ret, &report, (uint8_t *)buf.ptr, required_quote_size);
     if (sgx_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: ocall_get_quote bridge failed 0x%04x\n", sgx_ret);
+        PRINT_DEBUG_LOG("DCAP: ocall_get_quote bridge failed 0x%04x", sgx_ret);
         return teep_err_from_sgx_status(sgx_ret);
     }
     if (ocall_ret != SGX_SUCCESS) {
-        PRINT_DEBUG_LOG("[TEEP Agent] DCAP: sgx_qe_get_quote failed 0x%04x\n", ocall_ret);
+        PRINT_DEBUG_LOG("DCAP: sgx_qe_get_quote failed 0x%04x", ocall_ret);
         return teep_err_from_sgx_status(ocall_ret);
     }
 

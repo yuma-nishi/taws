@@ -68,7 +68,7 @@ else
     Uae_Service_Library_Name := sgx_uae_service
 endif
 
-App_Cpp_Files := App/src/sgx_teep_session.cpp App/src/teep_http_client.cpp App/src/dcap_quote_ocalls.cpp
+App_Cpp_Files := App/src/sgx_teep_session.cpp App/src/teep_http_client.cpp App/src/dcap_quote_ocalls.cpp App/src/taws_logger.cpp
 App_Include_Paths := -IApp -IApp/inc -Icommon -I$(SGX_SDK)/include $(SYS_INC)
 
 App_C_Flags := -fPIC -Wno-attributes $(App_Include_Paths)
@@ -86,7 +86,7 @@ APP_TARGET := $(if $(filter 1,$(BUILD_APP)),$(App_Name),)
 GO_BUILD_DIR := $(ROOT_DIR)/build/go
 GO_BIN := taws
 GO_LIB := $(GO_BUILD_DIR)/libattester.a
-GO_APP_CPP_OBJS := $(GO_BUILD_DIR)/sgx_teep_session.o $(GO_BUILD_DIR)/teep_http_client.o $(GO_BUILD_DIR)/dcap_quote_ocalls.o $(GO_BUILD_DIR)/attester_api.o
+GO_APP_CPP_OBJS := $(GO_BUILD_DIR)/sgx_teep_session.o $(GO_BUILD_DIR)/teep_http_client.o $(GO_BUILD_DIR)/dcap_quote_ocalls.o $(GO_BUILD_DIR)/taws_logger.o $(GO_BUILD_DIR)/attester_api.o
 GO_APP_C_OBJS := $(GO_BUILD_DIR)/Enclave_u.o
 
 ######## Enclave Settings ########
@@ -120,7 +120,9 @@ Enclave_Cpp_Files := Enclave/src/Enclave.cpp Enclave/src/Enclave_wasm.cpp \
 					 Enclave/src/Enclave_generate_keypair.cpp Enclave/src/Enclave_process_message.cpp \
 					 Enclave/src/Enclave_generate_evidence.cpp\
 					 Enclave/src/suit_processor_wrapper.cpp \
-					 Enclave/src/tc_manager.cpp
+					 Enclave/src/tc_manager.cpp \
+					 Enclave/src/taws_logger.cpp \
+					 Enclave/src/taws_teep_debug_print.cpp
 Enclave_Include_Paths := -IEnclave -IEnclave/inc -Icommon -I$(SGX_SDK)/include -I$(SGX_SDK)/include/libcxx -I$(SGX_SDK)/include/tlibc $(SYS_INC) \
 						$(WAMR_SYS_INC)
 						 
@@ -240,6 +242,10 @@ $(GO_BUILD_DIR)/teep_http_client.o: App/src/teep_http_client.cpp | $(GO_BUILD_DI
 	@echo "CXX  <=  $< (go)"
 
 $(GO_BUILD_DIR)/dcap_quote_ocalls.o: App/src/dcap_quote_ocalls.cpp App/inc/dcap_quote_ocalls.h | $(GO_BUILD_DIR)
+	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -DATTESTER_NO_MAIN -c $< -o $@
+	@echo "CXX  <=  $< (go)"
+
+$(GO_BUILD_DIR)/taws_logger.o: App/src/taws_logger.cpp common/taws_logger.h | $(GO_BUILD_DIR)
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(App_Cpp_Flags) -DATTESTER_NO_MAIN -c $< -o $@
 	@echo "CXX  <=  $< (go)"
 

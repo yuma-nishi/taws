@@ -14,6 +14,7 @@
 #include "App.h"
 #include "Enclave_u.h"
 #include "sgx_urts.h"
+#include "taws_logger.h"
 
 int initialize_enclave(void);
 void print_error_message(sgx_status_t ret);
@@ -22,6 +23,8 @@ teep_session_result_t run_teep_session(const char *tam_url, const char *app_name
 static bool g_initialized = false;
 static bool g_key_ready = false;
 static bool g_stdio_configured = false;
+/* Retains the requested log level until the Enclave exists and can receive it. */
+static int g_pending_enclave_log_level = TAWS_LOG_LEVEL_INFO;
 
 static void configure_stdio(void)
 {
@@ -44,6 +47,7 @@ static int sgx_initialized(const char *keygen_mode)
         return -1;
     }
     g_initialized = true;
+    (void)ecall_set_log_level(global_eid, g_pending_enclave_log_level);
 
     if (keygen_mode == NULL || strcmp(keygen_mode, "") == 0) {
         keygen_mode = "yes";
@@ -57,6 +61,7 @@ static int sgx_initialized(const char *keygen_mode)
         } else if (strcmp(keygen_mode, "no") == 0) {
             sgx_ret = ecall_teep_set_esp256_key(global_eid, &result);
         } else {
+            TAWS_LOG_ERROR("invalid keygen mode: %s", keygen_mode);
             return -1;
         }
         if (sgx_ret != SGX_SUCCESS) {
@@ -64,6 +69,7 @@ static int sgx_initialized(const char *keygen_mode)
             return -1;
         }
         if (result != 0) {
+            TAWS_LOG_ERROR("key initialization failed: %d", result);
             return result;
         }
         g_key_ready = true;
@@ -75,6 +81,23 @@ static int sgx_initialized(const char *keygen_mode)
 int attester_init(const char *keygen_mode)
 {
     return sgx_initialized(keygen_mode);
+}
+
+int attester_set_log_level(int level)
+{
+    if (level < TAWS_LOG_LEVEL_ERROR || level > TAWS_LOG_LEVEL_DEBUG) {
+        return -1;
+    }
+    g_pending_enclave_log_level = level;
+    taws_log_set_level((taws_log_level_t)level);
+    if (g_initialized) {
+        sgx_status_t sgx_ret = ecall_set_log_level(global_eid, level);
+        if (sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+    }
+    return 0;
 }
 
 teep_session_result_t attester_install(const char *tam_url, const char *app_name)
@@ -126,6 +149,7 @@ int attester_invoke_wasm(const char *wapp_name,
 void attester_close(void)
 {
     if (g_initialized) {
+        TAWS_LOG_INFO("closing enclave");
         sgx_destroy_enclave(global_eid);
         g_initialized = false;
         g_key_ready = false;

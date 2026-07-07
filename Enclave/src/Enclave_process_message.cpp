@@ -244,7 +244,6 @@ teep_err_t process_query_request(const teep_query_request_t *query_request,
     UsefulBuf tmp = work_buf;
     teep_query_response_t *query_response = (teep_query_response_t*)message;
 
-    PRINT_DEBUG_LOG("[TEEP Agent] parsed TEEP QueryRequest message\n");
     if (query_request->contains & TEEP_MESSAGE_CONTAINS_VERSIONS) {
         for (i = 0; i < query_request->versions.len; i++) {
             if (query_request->versions.items[i] == SUPPORTED_VERSION) {
@@ -284,7 +283,7 @@ out:
         goto error;
     }
 
-    PRINT_DEBUG_LOG("[TEEP Agent] generate QueryResponse\n");
+    TAWS_LOG_INFO("generating QueryResponse");
 
     memset(query_response, 0, sizeof(teep_query_response_t));
 
@@ -300,23 +299,23 @@ out:
     // Build QueryResponse and include attestation payload when requested.
     query_response->type = TEEP_TYPE_QUERY_RESPONSE;
     if(query_request->data_item_requested.attestation){
-        PRINT_DEBUG_LOG("[TEEP Agent] generate attestation evidence\n");
+        TAWS_LOG_INFO("generating attestation evidence");
 
         if(SGX_EVIDENCE == 1){
-            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: SGX DCAP\n");
+            PRINT_DEBUG_LOG("evidence mode: SGX DCAP");
             result = create_evidence_dcap_envelope(query_request, tmp, key_pair, &eat);
         }else{
-            PRINT_DEBUG_LOG("[TEEP Agent] evidence mode: generic EAT\n");
+            PRINT_DEBUG_LOG("evidence mode: generic EAT");
             result = create_evidence_generic(query_request, tmp, key_pair, &eat);
         }
         if (result != TEEP_SUCCESS) {
-            PRINT_DEBUG_LOG("[TEEP Agent] evidence creation failed. %s(%d)\n",
+            PRINT_DEBUG_LOG("evidence creation failed. %s(%d)",
                             teep_err_to_str(result),
                             result);
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
-        PRINT_DEBUG_LOG("[TEEP Agent] attestation evidence size=%zu capacity=%zu\n",
+        PRINT_DEBUG_LOG("attestation evidence size=%zu capacity=%zu",
                         eat.len,
                         tmp.len);
         tmp = UsefulBuf_SliceTail(tmp, eat);
@@ -460,7 +459,7 @@ teep_err_t process_update(const teep_update_t *update,
     uint64_t err_code_contains = 0;
 
 
-     PRINT_DEBUG_LOG("[TEEP Agent] parsed TEEP Update message\n");
+    TAWS_LOG_INFO("Update received");
     if (!(update->contains & TEEP_MESSAGE_CONTAINS_TOKEN) ||
         update->token.len < 8 || 64 < update->token.len) {
         err_code_contains |= TEEP_ERR_CODE_PERMANENT_ERROR;
@@ -551,7 +550,7 @@ teep_err_t process_update(const teep_update_t *update,
         }
 
         // Read envelope (contains SUIT manifest).
-        PRINT_DEBUG_LOG("[TEEP Agent] process SUIT Manifest\n");
+        TAWS_LOG_INFO("processing SUIT manifest");
         if (update->manifest_list.items[manifest_index].ptr == NULL ||
             update->manifest_list.items[manifest_index].len == 0 ||
             update->manifest_list.items[manifest_index].len > envelope_buf.len) {
@@ -585,7 +584,7 @@ teep_err_t process_update(const teep_update_t *update,
                    err_str != NULL ? " " : "",
                    err_str != NULL ? err_str : "");
             if (fail_report != NULL && fail_report_len > 0) {
-                PRINT_DEBUG_LOG("[TEEP Agent] SUIT report available on failure (%zu bytes)\n",
+                PRINT_DEBUG_LOG("SUIT report available on failure (%zu bytes)",
                        fail_report_len);
                 suit_report_args_t report_args = {
                     .suit_report = (UsefulBufC){ .ptr = fail_report, .len = fail_report_len },
@@ -609,6 +608,7 @@ teep_err_t process_update(const teep_update_t *update,
             err_code_contains |= TEEP_ERR_CODE_TEMPORARY_ERROR;
             goto error;
         }
+        TAWS_LOG_INFO("SUIT manifest processed");
 
         if (processor_initialized) {
             suit_processor_free(processor_context);
@@ -633,7 +633,7 @@ teep_err_t process_update(const teep_update_t *update,
                 static_cast<const uint8_t *>(suit_report)),
         };
         success->contains |= TEEP_MESSAGE_CONTAINS_SUIT_REPORTS;
-        PRINT_DEBUG_LOG("[TEEP Broker] > SUIT report in success (%zu bytes)\n", suit_report_len);
+        PRINT_DEBUG_LOG("SUIT report in success (%zu bytes)", suit_report_len);
     }
     tc_manager_dump_records();
 
@@ -679,7 +679,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
 
     UsefulBuf_MAKE_STACK_UB(work_buf, WORK_BUF_LEN);
     work_buf.len = WORK_BUF_LEN; /* Caller-side stack scratch buffer to reduce malloc in subroutines. */
-    PRINT_DEBUG_LOG("[TEEP Broker] buffers: cbor_send=%zu work=%zu allocated_send=%zu recv=%zu\n",
+    PRINT_DEBUG_LOG("buffers: cbor_send=%zu work=%zu allocated_send=%zu recv=%zu",
                     (size_t)MAX_SEND_BUFFER_SIZE,
                     (size_t)WORK_BUF_LEN,
                     allocated_len,
@@ -715,7 +715,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
 
     switch (recv_message.teep_message.type) {
         case TEEP_TYPE_QUERY_REQUEST:
-            PRINT_DEBUG_LOG("[TEEP Broker] < Received QueryRequest.\n");
+            TAWS_LOG_INFO("received TEEP QueryRequest");
             TEEP_DEBUG_QUERY((const teep_query_request_t *)&recv_message, 2, 2);
             result = process_query_request((const teep_query_request_t *)&recv_message,
                                            work_buf,
@@ -724,7 +724,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
                                            &send_message);
             break;
         case TEEP_TYPE_UPDATE:
-            PRINT_DEBUG_LOG("[TEEP Broker] < Received UpdateMessage.\n");
+            TAWS_LOG_INFO("received TEEP Update");
             TEEP_DEBUG_UPDATE((const teep_update_t *)&recv_message, 2, 2, NULL);
             if (g_agent_status == WAITING_QUERY_REQUEST) {
                 PRINT_DEBUG_LOG("main : Received Update message without QueryRequest.\n");
@@ -764,7 +764,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
                         (size_t)MAX_SEND_BUFFER_SIZE);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
-    PRINT_DEBUG_LOG("[TEEP Broker] encoded TEEP message size=%zu capacity=%zu\n",
+    PRINT_DEBUG_LOG("encoded TEEP message size=%zu capacity=%zu",
                     cbor_send_buf.len,
                     (size_t)MAX_SEND_BUFFER_SIZE);
 
@@ -783,7 +783,7 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
                         allocated_len);
         return ECALL_PROCESS_TEEP_RESULT_FATAL;
     }
-    PRINT_DEBUG_LOG("[TEEP Broker] signed COSE message size=%zu allocated_len=%zu\n",
+    PRINT_DEBUG_LOG("signed COSE message size=%zu allocated_len=%zu",
                     cose_send_buf.len,
                     allocated_len);
 
@@ -801,6 +801,12 @@ extern "C" ecall_process_teep_result_t ecall_process_message(const uint8_t *recv
     if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE &&
         (send_message.query_response.contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD) != 0) {
         return ECALL_PROCESS_TEEP_RESULT_DEVICE_ACTIVATION_FLOW;
+    }
+    if (send_message.teep_message.type == TEEP_TYPE_QUERY_RESPONSE) {
+        return ECALL_PROCESS_TEEP_RESULT_QUERY_RESPONSE;
+    }
+    if (send_message.teep_message.type == TEEP_TYPE_SUCCESS) {
+        return ECALL_PROCESS_TEEP_RESULT_SUCCESS;
     }
 
     return ECALL_PROCESS_TEEP_RESULT_OK;

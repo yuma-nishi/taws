@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include "sgx_dcap_ql_wrapper.h"
+#include "taws_logger.h"
 
 extern "C" sgx_status_t ocall_get_qe_target_info(sgx_target_info_t *qe_target_info)
 {
@@ -18,7 +19,7 @@ extern "C" sgx_status_t ocall_get_qe_target_info(sgx_target_info_t *qe_target_in
 
     quote3_error_t qret = sgx_qe_get_target_info(qe_target_info);
     if (qret != SGX_QL_SUCCESS) {
-        fprintf(stderr, "sgx_qe_get_target_info failed: 0x%04x\n", qret);
+        TAWS_LOG_ERROR("sgx_qe_get_target_info failed: 0x%04x", qret);
         return SGX_ERROR_UNEXPECTED;
     }
 
@@ -33,7 +34,7 @@ extern "C" sgx_status_t ocall_get_quote_size(uint32_t *quote_size)
 
     quote3_error_t qret = sgx_qe_get_quote_size(quote_size);
     if (qret != SGX_QL_SUCCESS) {
-        fprintf(stderr, "sgx_qe_get_quote_size failed: 0x%04x\n", qret);
+        TAWS_LOG_ERROR("sgx_qe_get_quote_size failed: 0x%04x", qret);
         return SGX_ERROR_UNEXPECTED;
     }
 
@@ -50,7 +51,7 @@ extern "C" sgx_status_t ocall_get_quote(const sgx_report_t *report,
 
     quote3_error_t qret = sgx_qe_get_quote(report, quote_size, quote_buf);
     if (qret != SGX_QL_SUCCESS) {
-        fprintf(stderr, "sgx_qe_get_quote failed: 0x%04x\n", qret);
+        TAWS_LOG_ERROR("sgx_qe_get_quote failed: 0x%04x", qret);
         return SGX_ERROR_UNEXPECTED;
     }
 

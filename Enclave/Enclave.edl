@@ -24,6 +24,8 @@ enclave {
 
     
     trusted {
+        public void ecall_set_log_level(int level);
+
     /* Enclave_generate_keypair.cpp */
         public int ecall_teep_generate_esp256_key_pair();
         public int ecall_teep_set_esp256_key();
