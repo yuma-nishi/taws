@@ -27,9 +27,7 @@ By combining this SGX-based TEEP Agent with the corresponding TAM and Verifier, 
 │   ├── 📁 QCBOR
 │   ├── 📁 t_cose
 │   ├── 📁 intel-sgx-ssl
-│   ├── 📁 wasm-micro-runtime
-│   ├── 📁 intel-dcap-pccs
-│   └── 📁 intel-dcap
+│   └── 📁 wasm-micro-runtime
 ├── 📄 Makefile
 ├── 📄 Makefile.test
 ├── 📄 Makefile.sgx.test
@@ -43,9 +41,8 @@ The TEE Device uses the following libraries.
 * [t_cose](https://github.com/kentakayama/t_cose)
 * [intel-sgx-ssl](https://github.com/intel/intel-sgx-ssl)
 * [wasm-micro-runtime](https://github.com/bytecodealliance/wasm-micro-runtime)
-* [intel-dcap-pccs](https://github.com/intel/confidential-computing.tee.dcap.pccs)
-* [intel-dcap](https://github.com/intel/confidential-computing.tee.dcap)
 
+Intel SGX DCAP and PCCS are runtime/platform dependencies installed from Intel SGX/DCAP packages, not source dependencies tracked in this repository.
 
 
 ## Getting started
@@ -69,34 +66,27 @@ Before building or running TAWS, make sure the target environment has:
 - Host [SGX driver/kernel](https://github.com/intel/linux-sgx-driver) support with `/dev/sgx_enclave` and `/dev/sgx_provision`
 
 ### Docker Workflow
-The Docker workflow is the shortest path to a runnable TAWS Web UI. It builds TAWS inside a single container and starts `./build/go/taws web` through the container entrypoint.
+The Docker workflow is the shortest path to a runnable TAWS Web UI.
+
+TAWS supports two Docker modes:
+- PCCS mode: for a standard SGX host using Intel PCCS.
+- Azure mode: for Azure SGX VMs using Azure DCAP Client.
 
 #### Requirements
 - Docker
-- Intel SGX hardware and host SGX driver/kernel support for hardware-mode execution
+- Intel SGX-capable hardware
+- Host SGX driver/kernel support
 - Host SGX device nodes at `/dev/sgx_enclave` and `/dev/sgx_provision`
 
-#### Build
-Build the default TAWS Docker image for a PCCS-backed host. The Dockerfile installs the Intel SGX SDK and DCAP/PCCS packages directly from Intel's prebuilt Ubuntu 22.04 artifacts, so no local base-image preparation step is required. In the default image, the `sgx-dcap-pccs` package is used to supply the PCCS application under `/opt/intel/sgx-dcap-pccs`; the container does not rely on the package's host-style service management.
+#### Run on a PCCS-backed SGX Host
+Use this mode on a PCCS-backed SGX host.
 
+Build the image:
 ```bash
 docker build -t taws:pccs .
 ```
 
-For Azure SGX VMs, build with the Azure DCAP provider:
-
-```bash
-docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
-```
-
-The Azure Docker build adds Microsoft's Ubuntu 22.04 package repository during the Azure-only branch and installs `az-dcap-client` from that apt repository.
-
-#### Run on a PCCS-backed SGX Host
-Run TAWS on an SGX hardware host using Docker. In this mode, the container starts a local development PCCS instance and AESM inside `taws:pccs`, then runs `./build/go/taws web`.
-The `--device` flags pass the host SGX device nodes into the container.
-
-`PCCS_API_KEY` is required in this mode. Obtain it from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
-
+Run the container:
 ```bash
 docker run --rm -it \
   --network host \
@@ -106,24 +96,23 @@ docker run --rm -it \
   -e TAWS_LOG_LEVEL=info \
   taws:pccs
 ```
+
+`PCCS_API_KEY` is required in this mode. 
+Obtain it from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
+
 Optional runtime settings can be passed with additional `-e` flags:
-`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL`. Supported log levels are `error`, `info`, and `debug`.
-
-The container-local PCCS configuration is intentionally minimal and fixed for development use:
-- PCCS listens on `127.0.0.1:8081`
-- QCNL points to `https://localhost:8081/sgx/certification/v4/`
-- `use_secure_cert` is disabled because the container generates a self-signed certificate
-- PCCS uses sqlite with `/opt/intel/sgx-dcap-pccs/pckcache.db`
-- The default caching mode is `LAZY` unless `PCCS_CACHING_MODE` is overridden
-
-This is distinct from the Azure mode below. The default PCCS image runs a local PCCS + AESM stack in the container, while the Azure image relies on `az-dcap-client` and does not start container PCCS/AESM services.
+`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL`. 
+Supported log levels are `error`, `info`, and `debug`.
 
 #### Run on an Azure SGX VM
-Run the Azure image with host networking and the Azure SGX device paths. In this mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container PCCS/AESM services because Azure quote provider integration comes from `az-dcap-client`.
-The `--device` flags pass the Azure VM's host SGX device nodes into the container.
+Use this mode on an Azure SGX VM.
 
-An Intel PCS API key is normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
+Build the image:
+```bash
+docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
+```
 
+Run the container:
 ```bash
 docker run --rm -it \
   --network host \
@@ -134,7 +123,7 @@ docker run --rm -it \
   taws:azure
 ```
 
-`TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL` can be overridden with `-e` flags in both Docker modes. By default, the container listens on `0.0.0.0:8181`, uses `http://localhost:8080/tam` as the TAM URL, and runs with `TAWS_LOG_LEVEL=info`. Supported log levels are `error`, `info`, and `debug`.
+Supported log levels are `error`, `info`, and `debug`.
 
 ### Native Workflow
 Build and run TAWS directly on the SGX host.
