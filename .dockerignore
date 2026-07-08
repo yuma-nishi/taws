@@ -1,0 +1,12 @@
+.git
+.deps
+build
+lib
+*.o
+*.so
+*.signed.so
+.config_*
+third_party/**/.git
+third_party/**/build
+third_party/**/cmake_build
+third_party/**/node_modules

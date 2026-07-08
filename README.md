@@ -77,13 +77,7 @@ The Docker workflow is the shortest path to a runnable TAWS Web UI. It builds TA
 - Host SGX device nodes at `/dev/sgx_enclave` and `/dev/sgx_provision`
 
 #### Build
-Prepare the local Intel SGX SDK base image. This script builds the `sgx_sample_deb` Docker image used by the TAWS `Dockerfile`.
-
-```bash
-./scripts/prepare_sgx_base_image.sh
-```
-
-Build the default TAWS Docker image for a PCCS-backed host. No `--build-arg` is required for the container PCCS/AESM configuration:
+Build the default TAWS Docker image for a PCCS-backed host. The Dockerfile installs the Intel SGX SDK and DCAP/PCCS packages directly from Intel's prebuilt Ubuntu 22.04 artifacts, so no local base-image preparation step is required. In the default image, the `sgx-dcap-pccs` package is used to supply the PCCS application under `/opt/intel/sgx-dcap-pccs`; the container does not rely on the package's host-style service management.
 
 ```bash
 docker build -t taws:pccs .
@@ -95,8 +89,10 @@ For Azure SGX VMs, build with the Azure DCAP provider:
 docker build --build-arg TAWS_DCAP_PROVIDER=azure -t taws:azure .
 ```
 
+The Azure Docker build adds Microsoft's Ubuntu 22.04 package repository during the Azure-only branch and installs `az-dcap-client` from that apt repository.
+
 #### Run on a PCCS-backed SGX Host
-Run TAWS on an SGX hardware host using Docker. PCCS and AESM run inside the `taws:pccs` container for SGX quote generation.
+Run TAWS on an SGX hardware host using Docker. In this mode, the container starts a local development PCCS instance and AESM inside `taws:pccs`, then runs `./build/go/taws web`.
 The `--device` flags pass the host SGX device nodes into the container.
 
 `PCCS_API_KEY` is required in this mode. Obtain it from the [Intel Trusted Services Portal](https://api.portal.trustedservices.intel.com/provisioning-certification).
@@ -111,10 +107,19 @@ docker run --rm -it \
   taws:pccs
 ```
 Optional runtime settings can be passed with additional `-e` flags:
-`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL`.Supported log levels are `error`, `info`, and `debug`.
+`PCCS_PROXY`, `PCCS_CACHING_MODE`, `TAWS_WEB_ADDR`, `TAWS_TAM_URL`, and `TAWS_LOG_LEVEL`. Supported log levels are `error`, `info`, and `debug`.
+
+The container-local PCCS configuration is intentionally minimal and fixed for development use:
+- PCCS listens on `127.0.0.1:8081`
+- QCNL points to `https://localhost:8081/sgx/certification/v4/`
+- `use_secure_cert` is disabled because the container generates a self-signed certificate
+- PCCS uses sqlite with `/opt/intel/sgx-dcap-pccs/pckcache.db`
+- The default caching mode is `LAZY` unless `PCCS_CACHING_MODE` is overridden
+
+This is distinct from the Azure mode below. The default PCCS image runs a local PCCS + AESM stack in the container, while the Azure image relies on `az-dcap-client` and does not start container PCCS/AESM services.
 
 #### Run on an Azure SGX VM
-Run the Azure image with host networking and the Azure SGX device paths. In this mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container PCCS/AESM services.
+Run the Azure image with host networking and the Azure SGX device paths. In this mode the entrypoint unsets `SGX_AESM_ADDR` and starts TAWS without container PCCS/AESM services because Azure quote provider integration comes from `az-dcap-client`.
 The `--device` flags pass the Azure VM's host SGX device nodes into the container.
 
 An Intel PCS API key is normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
@@ -159,11 +164,19 @@ Other Linux distributions may work but have not been verified.
 #### Run natively on an Azure SGX VM
 Use this path when TAWS runs directly on an Azure SGX VM.
 
-Build and install the Azure DCAP Client from [`microsoft/Azure-DCAP-Client`](https://github.com/microsoft/Azure-DCAP-Client) as the Azure quote provider integration for the native workflow.
+Add Microsoft's Ubuntu 22.04 package repository, then install `az-dcap-client` as the Azure quote provider integration for the native workflow:
+
+```bash
+wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm -f packages-microsoft-prod.deb
+sudo apt-get update
+sudo apt-get install -y az-dcap-client
+```
 
 A local PCCS instance and an Intel PCS API key are normally not required in this mode because the Azure DCAP Client provides the DCAP quote provider integration for Azure.
 
-After the Azure DCAP Client is configured, use the common build and run commands below.
+After `az-dcap-client` is installed, use the common build and run commands below.
 
 #### Run natively on a PCCS-backed SGX Host
 Use this path when TAWS runs directly on a non-Azure SGX hardware host backed by PCCS.
