@@ -60,6 +60,7 @@ config.hosts = '127.0.0.1';
 config.ApiKey = process.env.PCCS_API_KEY;
 config.proxy = process.env.PCCS_PROXY || '';
 config.CachingFillMode = process.env.PCCS_CACHING_MODE || 'LAZY';
+config.LogLevel = process.env.PCCS_LOG_LEVEL || 'error';
 config.DB_CONFIG = 'sqlite';
 config.sqlite = config.sqlite || {};
 config.sqlite.options = config.sqlite.options || {};
