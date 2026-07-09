@@ -13,6 +13,7 @@ extern "C" {
 extern "C" int printf(const char *fmt, ...);
 
 static teep_err_t taws_print_component_id(const teep_buf_t *component_id);
+static const size_t TAWS_MAX_PRINT_TEXT_COUNT = 40;
 
 static bool taws_is_printable_char(uint8_t c)
 {
@@ -59,14 +60,14 @@ static teep_err_t taws_print_text_within_max(const char *text, size_t size)
         return TEEP_ERR_UNEXPECTED_ERROR;
     }
 
-    size_t print_size = (size <= TEEP_MAX_PRINT_TEXT_COUNT) ? size : TEEP_MAX_PRINT_TEXT_COUNT;
+    size_t print_size = (size <= TAWS_MAX_PRINT_TEXT_COUNT) ? size : TEEP_MAX_PRINT_TEXT_COUNT;
     printf("\"");
     teep_err_t result = taws_print_text_body(text, print_size);
     if (result != TEEP_SUCCESS) {
         return result;
     }
     printf("\"");
-    if (size > TEEP_MAX_PRINT_TEXT_COUNT) {
+    if (size > TAWS_MAX_PRINT_TEXT_COUNT) {
         printf("..");
     }
     return TEEP_SUCCESS;

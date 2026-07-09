@@ -458,7 +458,6 @@ teep_err_t process_update(const teep_update_t *update,
     uint64_t err_code_contains = 0;
 
 
-    TAWS_LOG_INFO("Update received");
     if (!(update->contains & TEEP_MESSAGE_CONTAINS_TOKEN) ||
         update->token.len < 8 || 64 < update->token.len) {
         err_code_contains |= TEEP_ERR_CODE_PERMANENT_ERROR;
