@@ -118,12 +118,11 @@ docker run --rm -it \
   --network host \
   --device /dev/sgx_enclave:/dev/sgx_enclave \
   --device /dev/sgx_provision:/dev/sgx_provision \
-  -e AZDCAP_DEBUG_LOG_LEVEL=ERROR \
   -e TAWS_LOG_LEVEL=info \
   taws:azure
 ```
 
-Supported log levels are `error`, `info`, and `debug`.
+Supported `TAWS_LOG_LEVEL` values are `error`, `info`, and `debug`.
 
 ### Native Workflow
 Build and run TAWS directly on the SGX host.

@@ -74,8 +74,7 @@ static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
 static const char k_dcap_quote_attestation_payload_format[] = "application/sgx-quote3-teep-bundle";
-static const char k_generic_eat_attestation_payload_format[] =
-    "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
+static const char k_generic_eat_attestation_payload_format[] = "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
