@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 SECOM CO., LTD. All Rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #ifndef TEEP_BUFFER_SIZES_H
 #define TEEP_BUFFER_SIZES_H
 
