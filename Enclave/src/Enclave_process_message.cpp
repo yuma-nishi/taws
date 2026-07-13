@@ -74,8 +74,7 @@ static const int64_t k_suit_parameter_component_id = 0;
 static const int64_t k_suit_parameter_image_digest = 3;
 static const int64_t k_suit_digest_algorithm_sha256 = -16;
 static const char k_dcap_quote_attestation_payload_format[] = "application/sgx-quote3-teep-bundle";
-static const char k_generic_eat_attestation_payload_format[] =
-    "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
+static const char k_generic_eat_attestation_payload_format[] = "application/eat+cwt; eat_profile=\"urn:ietf:rfc:rfc9711\"";
 
 static void free_query_response_tc_list_buffers(teep_query_response_t *query_response)
 {
@@ -459,7 +458,6 @@ teep_err_t process_update(const teep_update_t *update,
     uint64_t err_code_contains = 0;
 
 
-    TAWS_LOG_INFO("Update received");
     if (!(update->contains & TEEP_MESSAGE_CONTAINS_TOKEN) ||
         update->token.len < 8 || 64 < update->token.len) {
         err_code_contains |= TEEP_ERR_CODE_PERMANENT_ERROR;

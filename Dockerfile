@@ -4,64 +4,95 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
-FROM sgx_sample_deb
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG GO_VERSION=1.22.12
 ARG AZ_DCAP_CLIENT_VERSION=1.13.1
-ARG NODE_MAJOR=24
 ARG TAWS_DCAP_PROVIDER
+ARG SGX_SDK_URL=https://download.01.org/intel-sgx/sgx-linux/2.29/distro/ubuntu22.04-server/sgx_linux_x64_sdk_2.29.100.1.bin
+ARG SGX_DEB_REPO_URL=https://download.01.org/intel-sgx/latest/dcap-latest/linux/distro/ubuntu22.04-server/sgx_debian_local_repo.tgz
 
 USER root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     ca-certificates \
     cmake \
-    cracklib-runtime \
     curl \
     debhelper \
-    devscripts \
-    dh-make \
-    dpkg-dev \
-    fakeroot \
-    gcc \
-    g++ \
-    git \
     gnupg \
     lsb-release \
-    make \
-    netcat-openbsd \
-    openssl \
+    libcurl4-openssl-dev \
     perl \
     pkgconf \
-    build-essential \
-    libboost-dev \
-    libboost-system-dev \
-    libboost-thread-dev \
-    libcurl4-openssl-dev \
-    libprotobuf-c-dev \
-    libsgx-ae-pce \
-    libsgx-enclave-common \
-    libsgx-headers \
-    libssl-dev \
-    protobuf-c-compiler \
-    protobuf-compiler \
     python-is-python3 \
     wget \
     zip \
     && rm -rf /var/lib/apt/lists/*
 
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && node --version \
+    && npm --version \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget -q "${SGX_SDK_URL}" -O /tmp/sgx_linux_x64_sdk.bin \
+    && chmod 0755 /tmp/sgx_linux_x64_sdk.bin \
+    && bash /tmp/sgx_linux_x64_sdk.bin --prefix=/opt/intel \
+    && rm -f /tmp/sgx_linux_x64_sdk.bin
+
+RUN wget -q "${SGX_DEB_REPO_URL}" -O /tmp/sgx_debian_local_repo.tgz \
+    && mkdir -p /opt/intel/sgx_debian_local_repo \
+    && tar -xzf /tmp/sgx_debian_local_repo.tgz -C /opt/intel/sgx_debian_local_repo --strip-components=1 \
+    && printf 'deb [trusted=yes] file:///opt/intel/sgx_debian_local_repo jammy main\n' > /etc/apt/sources.list.d/intel-sgx-local.list \
+    && rm -f /tmp/sgx_debian_local_repo.tgz
+
 RUN if [ "${TAWS_DCAP_PROVIDER}" = "azure" ]; then \
-        apt-get update \
-        && apt-get install -y --no-install-recommends nlohmann-json3-dev; \
+        wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb \
+        && dpkg -i /tmp/packages-microsoft-prod.deb \
+        && rm -f /tmp/packages-microsoft-prod.deb \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends \
+        az-dcap-client="${AZ_DCAP_CLIENT_VERSION}" \
+        libsgx-ae-id-enclave \
+        libsgx-ae-pce \
+        libsgx-ae-qe3 \
+        libsgx-dcap-ql \
+        libsgx-dcap-ql-dev \
+        libsgx-headers \
+        libsgx-aesm-quote-ex-plugin \
+        libsgx-urts; \
     else \
         apt-get update \
-        && apt-get install -y --no-install-recommends libsgx-aesm-quote-ex-plugin \
-        && curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" -o /tmp/nodesource_setup.sh \
-        && bash /tmp/nodesource_setup.sh \
-        && apt-get update \
-        && apt-get install -y --no-install-recommends nodejs \
-        && rm -f /tmp/nodesource_setup.sh; \
+        && apt-get install -y --no-install-recommends \
+        cracklib-runtime \
+        libsgx-ae-id-enclave \
+        libsgx-ae-pce \
+        libsgx-ae-qe3 \
+        libsgx-aesm-quote-ex-plugin \
+        libsgx-dcap-default-qpl \
+        libsgx-dcap-default-qpl-dev \
+        libsgx-dcap-ql \
+        libsgx-dcap-ql-dev \
+        libsgx-headers \
+        libsgx-urts \
+        netcat-openbsd \
+        openssl \
+        sgx-aesm-service \
+        # Keep PCCS package as the upstream app source, but bypass host-style
+        # service startup assumptions that fail during container installation.
+        && apt-get download sgx-dcap-pccs \
+        && mkdir -p /tmp/sgx-dcap-pccs \
+        && dpkg-deb -R ./sgx-dcap-pccs_*.deb /tmp/sgx-dcap-pccs \
+        && sed -i 's/exit 5/exit 0/' /tmp/sgx-dcap-pccs/opt/intel/sgx-dcap-pccs/startup.sh \
+        && dpkg-deb -b /tmp/sgx-dcap-pccs /tmp/sgx-dcap-pccs.deb \
+        && dpkg -i /tmp/sgx-dcap-pccs.deb \
+        && cd /opt/intel/sgx-dcap-pccs \
+        # Install runtime-only Node dependencies for direct `node pccs_server.js`.
+        && NODE_ENV=production npm install --omit=dev --no-audit --no-fund \
+        && rm -rf /tmp/sgx-dcap-pccs /tmp/sgx-dcap-pccs.deb ./sgx-dcap-pccs_*.deb; \
     fi \
     && rm -rf /var/lib/apt/lists/*
 
@@ -70,53 +101,31 @@ RUN wget -q "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.ta
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm -f /tmp/go.tar.gz
 
-RUN if [ "${TAWS_DCAP_PROVIDER}" = "azure" ]; then \
-        git clone --depth 1 --branch "${AZ_DCAP_CLIENT_VERSION}" --recurse-submodules https://github.com/microsoft/Azure-DCAP-Client.git /tmp/azure-dcap-client \
-        && cd /tmp/azure-dcap-client/src/Linux \
-        && ./configure \
-        && make \
-        && make install \
-        && ldconfig \
-        && rm -rf /tmp/azure-dcap-client; \
-    fi
-
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 WORKDIR /work/taws
-COPY . /work/taws/
+
+COPY scripts/build_third_party.sh /work/taws/scripts/build_third_party.sh
+COPY third_party/intel-sgx-ssl /work/taws/third_party/intel-sgx-ssl
+COPY third_party/QCBOR /work/taws/third_party/QCBOR
+COPY third_party/t_cose /work/taws/third_party/t_cose
+COPY third_party/libcsuit /work/taws/third_party/libcsuit
+COPY third_party/libteep /work/taws/third_party/libteep
+COPY third_party/wasm-micro-runtime /work/taws/third_party/wasm-micro-runtime
 
 RUN bash -lc "set -euo pipefail \
     && source /opt/intel/sgxsdk/environment \
-    && cd /work/taws/third_party/intel-dcap/QuoteGeneration \
-    && ./download_prebuilt.sh \
-    && if [ \"${TAWS_DCAP_PROVIDER}\" = azure ]; then \
-        BUILD_PLATFORM=docker make deb_sgx_pce_logic_pkg deb_sgx_qe3_logic_pkg deb_sgx_ae_qe3_pkg deb_sgx_ae_id_enclave_pkg deb_sgx_dcap_ql_pkg \
-        && dpkg -i --force-overwrite \
-        installer/linux/deb/libsgx-pce-logic/libsgx-pce-logic_*.deb \
-        installer/linux/deb/libsgx-qe3-logic/libsgx-qe3-logic_*.deb \
-        installer/linux/deb/libsgx-ae-qe3/libsgx-ae-qe3_*.deb \
-        installer/linux/deb/libsgx-ae-id-enclave/libsgx-ae-id-enclave_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql-dev_*.deb; \
-    else \
-        sed -i 's#grep -qE '\''docker|lxc'\'' /proc/1/cgroup#grep -qE '\''docker|lxc'\'' /proc/1/cgroup || [ -f /.dockerenv ]#' pccs/service/startup.sh \
-        && sed -i 's/exit 5/exit 0/' pccs/service/startup.sh \
-        && BUILD_PLATFORM=docker make deb_sgx_pce_logic_pkg deb_sgx_qe3_logic_pkg deb_sgx_ae_qe3_pkg deb_sgx_ae_id_enclave_pkg deb_sgx_dcap_ql_pkg deb_sgx_dcap_default_qpl_pkg deb_sgx_dcap_pccs_pkg \
-        && dpkg -i --force-overwrite --ignore-depends=npm \
-        installer/linux/deb/libsgx-pce-logic/libsgx-pce-logic_*.deb \
-        installer/linux/deb/libsgx-qe3-logic/libsgx-qe3-logic_*.deb \
-        installer/linux/deb/libsgx-ae-qe3/libsgx-ae-qe3_*.deb \
-        installer/linux/deb/libsgx-ae-id-enclave/libsgx-ae-id-enclave_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql_*.deb \
-        installer/linux/deb/libsgx-dcap-ql/libsgx-dcap-ql-dev_*.deb \
-        installer/linux/deb/libsgx-dcap-default-qpl/libsgx-dcap-default-qpl_*.deb \
-        installer/linux/deb/libsgx-dcap-default-qpl/libsgx-dcap-default-qpl-dev_*.deb \
-        pccs/build_infrastructure/installer/linux/deb/sgx-dcap-pccs/sgx-dcap-pccs_*.deb \
-        && cd /opt/intel/sgx-dcap-pccs \
-        && npm ci --omit=dev; \
-    fi \
     && cd /work/taws/scripts \
-    && ./build_third_party.sh \
+    && ./build_third_party.sh"
+
+COPY App /work/taws/App
+COPY Enclave /work/taws/Enclave
+COPY common /work/taws/common
+COPY yolov8-frontend /work/taws/yolov8-frontend
+COPY Makefile go.mod /work/taws/
+
+RUN bash -lc "set -euo pipefail \
+    && source /opt/intel/sgxsdk/environment \
     && cd /work/taws \
     && make SGX_MODE=HW SGX_DEBUG=1"
 
@@ -128,7 +137,9 @@ ENV TAWS_DCAP_PROVIDER=${TAWS_DCAP_PROVIDER}
 ENV TAWS_WEB_ADDR=0.0.0.0:8181
 ENV TAWS_TAM_URL=http://localhost:8080/tam
 ENV TAWS_LOG_LEVEL=info
+ENV AZDCAP_DEBUG_LOG_LEVEL=ERROR
 ENV PCCS_CACHING_MODE=LAZY
+ENV PCCS_LOG_LEVEL=error
 
 EXPOSE 8181
 

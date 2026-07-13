@@ -50,7 +50,7 @@ static void log_teep_send(teep_send_log_type_t type, size_t cose_size)
             taws_log_teep_send("sending TEEP QueryResponse: cose_size=%zu", cose_size);
             break;
         case TEEP_SEND_LOG_QUERY_RESPONSE_WITH_ATTESTATION:
-            taws_log_teep_send("sending TEEP QueryResponse with attestation: cose_size=%zu", cose_size);
+            taws_log_teep_send("sending TEEP QueryResponse with evidence: cose_size=%zu", cose_size);
             break;
         case TEEP_SEND_LOG_SUCCESS:
             taws_log_teep_send("sending TEEP Success: cose_size=%zu", cose_size);

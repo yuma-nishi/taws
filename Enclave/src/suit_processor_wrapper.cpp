@@ -160,7 +160,7 @@ extern "C" suit_err_t __wrap_suit_condition_callback(suit_condition_args_t condi
 }
 
 
-extern "C" suit_err_t __real_suit_report_callback(suit_report_args_t report_args);
+//extern "C" suit_err_t __real_suit_report_callback(suit_report_args_t report_args);
 extern "C" suit_err_t __wrap_suit_report_callback(suit_report_args_t report_args)
 {
     suit_err_t result = SUIT_SUCCESS;
@@ -170,12 +170,14 @@ extern "C" suit_err_t __wrap_suit_report_callback(suit_report_args_t report_args
      * libcsuit's default print callback expects a valid report buffer.
      * Guard empty reports to avoid NULL dereference in debug builds.
      */
-    if (has_report) {
+/*
+     if (has_report) {
         result = __real_suit_report_callback(report_args);
         if (result != SUIT_SUCCESS) {
             return SUIT_ERR_WHILE_REPORTING;
         }
     }
+*/
 #endif
 
     if (has_report) {

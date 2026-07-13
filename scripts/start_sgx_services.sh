@@ -11,6 +11,7 @@ PCCS_HOME=/opt/intel/sgx-dcap-pccs
 PCCS_CONFIG="${PCCS_HOME}/config/default.json"
 PCCS_SSL_DIR="${PCCS_HOME}/ssl_key"
 QCNL_CONFIG=/etc/sgx_default_qcnl.conf
+PCCS_CACHE_DB="${PCCS_HOME}/pckcache.db"
 AESM_HOME=
 PCCS_PID=
 AESM_PID=
@@ -29,6 +30,11 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 configure_pccs() {
+    if [ -z "${PCCS_API_KEY:-}" ]; then
+        echo "PCCS_API_KEY is required when TAWS_DCAP_PROVIDER is not azure" >&2
+        return 1
+    fi
+
     mkdir -p "${PCCS_SSL_DIR}" "${PCCS_HOME}/logs"
 
     if [ ! -f "${PCCS_SSL_DIR}/private.pem" ] || [ ! -f "${PCCS_SSL_DIR}/file.crt" ]; then
@@ -50,14 +56,15 @@ const normalizedConfig = rawConfig
 const config = JSON.parse(normalizedConfig);
 
 config.HTTPS_PORT = 8081;
-config.hosts = process.env.PCCS_HOSTS || '127.0.0.1';
-config.ApiKey = process.env.PCCS_API_KEY || config.ApiKey || '';
-config.proxy = process.env.PCCS_PROXY || config.proxy || '';
-config.CachingFillMode = process.env.PCCS_CACHING_MODE || config.CachingFillMode || 'LAZY';
-config.DB_CONFIG = config.DB_CONFIG || 'sqlite';
+config.hosts = '127.0.0.1';
+config.ApiKey = process.env.PCCS_API_KEY;
+config.proxy = process.env.PCCS_PROXY || '';
+config.CachingFillMode = process.env.PCCS_CACHING_MODE || 'LAZY';
+config.LogLevel = process.env.PCCS_LOG_LEVEL || 'error';
+config.DB_CONFIG = 'sqlite';
 config.sqlite = config.sqlite || {};
 config.sqlite.options = config.sqlite.options || {};
-config.sqlite.options.storage = config.sqlite.options.storage || '/opt/intel/sgx-dcap-pccs/pckcache.db';
+config.sqlite.options.storage = '/opt/intel/sgx-dcap-pccs/pckcache.db';
 
 fs.writeFileSync(configPath, `${JSON.stringify(config, null, 4)}\n`);
 NODE
@@ -66,6 +73,9 @@ NODE
     chmod 0600 "${PCCS_SSL_DIR}/private.pem"
     chmod 0644 "${PCCS_SSL_DIR}/file.crt"
     chmod 0640 "${PCCS_CONFIG}"
+    touch "${PCCS_CACHE_DB}"
+    chown pccs:pccs "${PCCS_CACHE_DB}"
+    chmod 0640 "${PCCS_CACHE_DB}"
 }
 
 configure_qcnl() {

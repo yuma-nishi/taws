@@ -42,6 +42,13 @@ static int is_teep_receive_log(const char *str)
            strstr(str, "received TEEP Update") != NULL;
 }
 
+static int is_teep_install_finished_log(taws_log_level_t level, const char *fmt)
+{
+    return level == TAWS_LOG_LEVEL_INFO &&
+           (strcmp(fmt, "TEEP install session finished: device activation flow") == 0 ||
+            strcmp(fmt, "TEEP install session finished") == 0);
+}
+
 void taws_log_set_level(taws_log_level_t level)
 {
     if (level < TAWS_LOG_LEVEL_ERROR || level > TAWS_LOG_LEVEL_DEBUG) {
@@ -62,6 +69,10 @@ void taws_log(taws_log_level_t level, const char *fmt, ...)
     }
 
     FILE *stream = (level == TAWS_LOG_LEVEL_ERROR) ? stderr : stdout;
+    int use_color = is_teep_install_finished_log(level, fmt) && stdout_supports_color();
+    if (use_color) {
+        fputs(TAWS_COLOR_GREEN, stream);
+    }
     fprintf(stream, "[TEEP Broker] [%s] ", level_name(level));
 
     va_list ap;
@@ -69,6 +80,9 @@ void taws_log(taws_log_level_t level, const char *fmt, ...)
     vfprintf(stream, fmt, ap);
     va_end(ap);
 
+    if (use_color) {
+        fputs(TAWS_COLOR_RESET, stream);
+    }
     fputc('\n', stream);
     fflush(stream);
 }

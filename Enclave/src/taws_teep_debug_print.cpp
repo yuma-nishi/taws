@@ -6,10 +6,14 @@
 
 #include "taws_logger.h"
 
+extern "C" {
+#include "teep/teep_message_print.h"
+}
+
 extern "C" int printf(const char *fmt, ...);
-extern "C" int putchar(int c);
 
 static teep_err_t taws_print_component_id(const teep_buf_t *component_id);
+static const size_t TAWS_MAX_PRINT_TEXT_COUNT = 40;
 
 static bool taws_is_printable_char(uint8_t c)
 {
@@ -28,14 +32,25 @@ static bool taws_printable_hex_string(const uint8_t *array, size_t size)
 
 static teep_err_t taws_print_text_body(const char *text, size_t size)
 {
+    if (text == NULL && size > 0) {
+        return TEEP_ERR_UNEXPECTED_ERROR;
+    }
+    if (size > TEEP_MAX_PRINT_BYTE_COUNT) {
+        return TEEP_ERR_UNEXPECTED_ERROR;
+    }
+
+    char escaped_text[TEEP_MAX_PRINT_BYTE_COUNT * 2 + 1];
+    size_t escaped_size = 0;
     for (size_t i = 0; i < size; i++) {
         if (text[i] == '\n') {
-            putchar('\\');
-            putchar('n');
+            escaped_text[escaped_size++] = '\\';
+            escaped_text[escaped_size++] = 'n';
         } else {
-            putchar(text[i]);
+            escaped_text[escaped_size++] = text[i];
         }
     }
+    escaped_text[escaped_size] = '\0';
+    printf("%s", escaped_text);
     return TEEP_SUCCESS;
 }
 
@@ -45,11 +60,14 @@ static teep_err_t taws_print_text_within_max(const char *text, size_t size)
         return TEEP_ERR_UNEXPECTED_ERROR;
     }
 
-    size_t print_size = (size <= TEEP_MAX_PRINT_TEXT_COUNT) ? size : TEEP_MAX_PRINT_TEXT_COUNT;
+    size_t print_size = (size <= TAWS_MAX_PRINT_TEXT_COUNT) ? size : TEEP_MAX_PRINT_TEXT_COUNT;
     printf("\"");
-    taws_print_text_body(text, print_size);
+    teep_err_t result = taws_print_text_body(text, print_size);
+    if (result != TEEP_SUCCESS) {
+        return result;
+    }
     printf("\"");
-    if (size > TEEP_MAX_PRINT_TEXT_COUNT) {
+    if (size > TAWS_MAX_PRINT_TEXT_COUNT) {
         printf("..");
     }
     return TEEP_SUCCESS;
@@ -79,7 +97,10 @@ static teep_err_t taws_print_hex_within_max(const uint8_t *array, size_t size)
     size_t print_size = (size <= TEEP_MAX_PRINT_BYTE_COUNT) ? size : TEEP_MAX_PRINT_BYTE_COUNT;
     if (taws_printable_hex_string(array, print_size)) {
         printf("'");
-        taws_print_text_body((const char *)array, print_size);
+        teep_err_t result = taws_print_text_body((const char *)array, print_size);
+        if (result != TEEP_SUCCESS) {
+            return result;
+        }
         printf("'");
     } else {
         printf("h'");
@@ -365,6 +386,14 @@ static teep_err_t taws_print_query_response(const teep_query_response_t *query_r
                                          indent_space + 2 * indent_delta,
                                          true);
         if (result != TEEP_SUCCESS) return result;
+    }
+    if (query_response->contains & TEEP_MESSAGE_CONTAINS_SELECTED_VERSION) {
+        taws_print_option_separator(&printed);
+        printf("%*s/ selected-version / %d : %u",
+               indent_space + 2 * indent_delta,
+               "",
+               TEEP_OPTIONS_KEY_SELECTED_VERSION,
+               query_response->selected_version);
     }
     if (query_response->contains & TEEP_MESSAGE_CONTAINS_ATTESTATION_PAYLOAD_FORMAT) {
         taws_print_option_separator(&printed);

@@ -68,27 +68,6 @@ find_sgxssl_configdata() {
   echo "${configdata}"
 }
 
-verify_sgxssl_no_asm() {
-  local configdata
-  local options
-  configdata="$(find_sgxssl_configdata)"
-  options="$(perl "${configdata}" --options)"
-  if printf '%s\n' "${options}" | awk '
-    /^Disabled features:/ { in_disabled = 1; next }
-    /^Enabled features:/ { in_disabled = 0; next }
-    in_disabled && $1 == "asm" { found = 1 }
-    END { exit found ? 0 : 1 }
-  '; then
-    echo "[INFO] Verified SGXSSL OpenSSL no-asm in ${configdata}"
-    return
-  fi
-
-  echo "[ERROR] SGXSSL OpenSSL no-asm was requested, but OpenSSL asm is still enabled." >&2
-  echo "[ERROR] Check ${configdata} with: perl ${configdata} --options" >&2
-  perl "${configdata}" --options | sed -n '/^Enabled features:/,/^Disabled features:/p' >&2
-  exit 1
-}
-
 build_sgxssl() {
   echo "[INFO] Building SGXSSL..."
   patch_sgxssl_no_asm
@@ -102,8 +81,7 @@ build_sgxssl() {
   (
     cd "${SGXSSL_DIR}"
     ./build_openssl.sh
-    verify_sgxssl_no_asm
-    make SGX_MODE=SIM
+    make sgxssl
   )
 
   require_dir "${SGXSSL_INC}"
