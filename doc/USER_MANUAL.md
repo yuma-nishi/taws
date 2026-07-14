@@ -9,21 +9,6 @@ It covers Web Server usage, CLI usage, available options, and test commands.
 - Target modes: `web`, `cli`
 - Related setup/build steps: [README Getting started](../README.md#getting-started)
 
-## Runtime Requirements
-TAWS is configured for Intel SGX hardware mode by default. Running the SGX/DCAP flow requires:
-
-- Intel SGX hardware and SGX hardware runtime.
-- Intel SGX DCAP Quote Generation API integration.
-- An environment-appropriate DCAP collateral source. Standard SGX hosts
-  normally use PCCS (which can obtain collateral from Intel PCS); Azure SGX
-  VMs use Azure DCAP Client integration.
-
-For environment-specific installation and configuration, use the
-[README workflows](../README.md#docker-workflow). PCCS, Intel PCS, Azure DCAP
-Client, and related runtime components are configured outside this manual.
-
-The default build setting is `SGX_EVIDENCE=1`, which generates SGX DCAP Evidence for TEEP attestation. Use `SGX_EVIDENCE=0` only as a development or compatibility mode for the generic EAT payload.
-
 ## Running Modes
 Usage:
 

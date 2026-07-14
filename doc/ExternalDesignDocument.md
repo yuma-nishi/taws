@@ -16,8 +16,6 @@ This document defines the external behavior of the Attester, including user-visi
 - For environment-specific installation and configuration, see the
   [README](../README.md#docker-workflow) (including its Azure and PCCS-backed
   workflows).
-- The TAM is started before the Attester.
-- Network connectivity is available.
 
 ### 2.2 Constraints
 - Authentication and authorization are not implemented.
