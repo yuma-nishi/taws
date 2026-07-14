@@ -235,6 +235,9 @@ Design docs are organized by audience and hierarchy.
     - [enclave-process-message.md](./doc/enclave-process-message.md)
       - Audience: TEE maintainers / REE-side developers (ECALL callers)
       - Purpose: High-level flow and state behavior of `ecall_process_message`.
+    - [evidence-generation.md](./doc/evidence-generation.md)
+      - Audience: TEE maintainers / TAM and Verifier developers
+      - Purpose: SGX DCAP Evidence generation, quote binding, and verifier responsibilities.
     - [suit-processor.md](./doc/suit-processor.md)
       - Audience: TEE maintainers
       - Purpose: SUIT callback-wrapper flow, entry points, and failure behavior summary.

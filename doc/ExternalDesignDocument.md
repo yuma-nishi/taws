@@ -8,7 +8,14 @@ This document defines the external behavior of the Attester, including user-visi
 ## 2. Preconditions and Constraints
 ### 2.1 Preconditions
 - The TEE Device runs in Intel SGX hardware mode for the standard flow.
-- SGX DCAP Evidence generation requires an SGX hardware runtime, DCAP quote provider, AESM, and PCCS access.
+- SGX DCAP Evidence generation requires an SGX hardware runtime, DCAP Quote
+  Generation API integration, and an environment-appropriate DCAP
+  collateral source. A standard SGX host normally uses PCCS (which can obtain
+  collateral from Intel PCS); an Azure SGX VM uses Azure DCAP Client
+  integration.
+- For environment-specific installation and configuration, see the
+  [README](../README.md#docker-workflow) (including its Azure and PCCS-backed
+  workflows).
 - The TAM is started before the Attester.
 - Network connectivity is available.
 
@@ -61,7 +68,7 @@ flowchart LR
   REE -->|"HTTP<br/>(POST /tam)"| TAM
 ```
 
-### 5.2 Interface List
+### 5. Interface List
 
 | Category | Method | Path | Summary |
 | --- | --- | --- | --- |

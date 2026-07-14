@@ -116,7 +116,8 @@ flowchart LR
   EPM[Enclave_process_message.cpp]
   Evidence[Enclave_generate_evidence.cpp]
   EWASM[Enclave_wasm.cpp]
-  DCAP[DCAP quote provider / AESM]
+  QGA[DCAP Quote Generation API]
+  QE[Quoting Enclave]
 
   CAPI -->|ECALL appName,func,input_image| EWASM
   EWASM -->|output_image| CAPI
@@ -124,7 +125,13 @@ flowchart LR
   Session -->|ECALL teep message| EPM
   EPM -->|teep message with attestation_payload| Session
   EPM -->|"QueryRequest challenge,<br/>TEEP Agent key information"| Evidence
-  Evidence -->|"OCALL: get QE target info,<br/>quote size, quote"| DCAP
-  DCAP -->|"QE target info,<br/>quote size, DCAP quote"| Evidence
+  Evidence -->|"OCALL: get QE target info,<br/>quote size, Quote3"| QGA
+  QGA -->|"QE target info,<br/>quote size, Quote3"| Evidence
+  QGA <-->|uses to generate Quote3| QE
   Evidence -->|"attestation_payload<br/>(DCAP quote bundle)"| EPM
 ```
+
+The detailed PCCS/Intel PCS and Azure DCAP collateral paths, including the
+TAWS TEE, TAWS REE, separate platform QE, and external-service boundaries, are
+defined by the sequence diagram in
+[evidence-generation.md](./evidence-generation.md#3-sgx-dcap-evidence-flow).
