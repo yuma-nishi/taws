@@ -115,7 +115,7 @@ Browser -->|"output_image"| User
 | Module | Role | Design Document |
 | --- | --- | --- |
 | `Enclave_process_message` | Processes TEEP messages | [enclave-process-message.md](./enclave-process-message.md) |
-| `Enclave_generate_evidence` | Generates generic EAT or SGX DCAP Evidence for QueryResponse | [enclave-process-message.md](./enclave-process-message.md) |
+| `Enclave_generate_evidence` | Generates generic EAT or SGX DCAP Evidence for QueryResponse | [evidence-generation.md](./evidence-generation.md) |
 | `tc_manager` | Manages TC records | [tc-manager.md](./tc-manager.md) |
 | `suit_manifest_process` | Processes SUIT manifests | [suit-processor.md](./suit-processor.md) |
 | `invoke_wasm` | Controls WASM execution | [invoke_wasm.md](./invoke_wasm.md) |

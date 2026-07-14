@@ -5,14 +5,7 @@ This document defines the external behavior of the Attester, including user-visi
 
 ---
 
-## 2. Preconditions and Constraints
-### 2.1 Preconditions
-- The TEE Device runs in Intel SGX hardware mode for the standard flow.
-- SGX DCAP Evidence generation requires an SGX hardware runtime, DCAP quote provider, AESM, and PCCS access.
-- The TAM is started before the Attester.
-- Network connectivity is available.
-
-### 2.2 Constraints
+## 2 Constraints
 - Authentication and authorization are not implemented.
 - HTTPS is not supported (HTTP only).
 - Concurrent multiple requests are out of scope.
@@ -61,7 +54,7 @@ flowchart LR
   REE -->|"HTTP<br/>(POST /tam)"| TAM
 ```
 
-### 5.2 Interface List
+### 5. Interface List
 
 | Category | Method | Path | Summary |
 | --- | --- | --- | --- |

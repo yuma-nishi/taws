@@ -58,6 +58,9 @@ ECALL return value definitions are in `common/ecall_process_teep_result.h`.
 ## 6. `process_query_request` Evidence Generation
 `process_query_request` generates attestation evidence only when `QueryRequest.data_item_requested.attestation` is true.
 
+For the Evidence generation flow, quote binding, and verifier responsibilities,
+see [evidence-generation.md](./evidence-generation.md).
+
 When attestation is requested, the evidence generation path is selected by the build-time `SGX_EVIDENCE` setting:
 
 - `SGX_EVIDENCE=1`: call `create_evidence_dcap_envelope()` and build an SGX DCAP quote bundle.
@@ -70,11 +73,13 @@ The QueryResponse always includes `attestation_payload_format` when attestation 
 
 The SGX DCAP path performs the following operations:
 
-1. Get Quoting Enclave target info through `ocall_get_qe_target_info`.
+1. Get Quoting Enclave (QE) target info from the DCAP Quote Generation API
+   through `ocall_get_qe_target_info`.
 2. Create SGX report data from the TEEP Agent public key and `QueryRequest` challenge.
-3. Call `sgx_create_report` for the Quoting Enclave target.
-4. Get the required quote size through `ocall_get_quote_size`.
-5. Get the DCAP quote through `ocall_get_quote`.
+3. Call `sgx_create_report` for the QE target; the QE is used by the API,
+   not called directly by the Enclave.
+4. Get the required quote size from the API through `ocall_get_quote_size`.
+5. Get the DCAP Quote3 from the API through `ocall_get_quote`.
 6. Encode the attestation payload as a CBOR array containing `raw-dcap-quote3` and `raw-report-data`.
 
 If evidence generation fails, `process_query_request` returns an `ERROR_MESSAGE` with `TEEP_ERR_CODE_TEMPORARY_ERROR`.
